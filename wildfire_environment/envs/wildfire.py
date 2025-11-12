@@ -34,7 +34,7 @@ class WildfireEnv(MultiGridEnv):
         size=17,
         num_agents=2,
         agent_start_positions=((1, 1), (15, 15)),
-        agent_colors=("red", "blue"),
+        agent_colors=("red", "blue", "yellow"),
         agent_groups=None,
         agent_view_size=10,
         initial_fire_size=1,
@@ -43,7 +43,7 @@ class WildfireEnv(MultiGridEnv):
         actions_set=WildfireActions,
         render_mode="rgb_array",
         render_selfish_region_boundaries=False,
-        cooperative_reward=True,
+        cooperative_reward=False,
         selfishness_weight=0.2,
         log_selfish_region_metrics=False,
         selfish_region_xmin=None,
@@ -849,6 +849,9 @@ class WildfireEnv(MultiGridEnv):
         terminated = False
         truncated = False
 
+        # Save initial positions to track which agents actually moved
+        initial_positions = {i: tuple(agent.pos) for i, agent in enumerate(self.agents)}
+
         # 1) Move agents sequentially, in random order
         order = np.random.permutation(len(actions))
         for i in order:
@@ -913,6 +916,12 @@ class WildfireEnv(MultiGridEnv):
                     next_cell = self.grid.get(*next_pos)
                     if next_cell is None or next_cell.can_overlap():
                         self.move_agent(i, next_pos)
+
+        # Count agents that actually moved (position changed)
+        num_agents_moved = 0
+        for i, agent in enumerate(self.agents):
+            if tuple(agent.pos) != initial_positions[i]:
+                num_agents_moved += 1
 
         # 2) Propagate wildfire dynamics by one time step
         trees_to_fire_state = []
@@ -1008,7 +1017,7 @@ class WildfireEnv(MultiGridEnv):
                 for a in self.agents:
                     if (a.pos[0] == c.pos[0]) and (a.pos[1] == c.pos[1]):
                         extinguished_by_agent[a.index] += 1
-                        break  # 단일 에이전트 겹침 가정
+                        # break  # 단일 에이전트 겹침 가정
 
             new_fire_total = len(trees_to_fire_state)
 
@@ -1057,6 +1066,7 @@ class WildfireEnv(MultiGridEnv):
                     extinguished_per_agent=extinguished_per_agent,
                     agent_tree_extinguished=agent_tree_extinguished,
                     agent_on_fire_tree=agent_on_fire_tree,
+                    num_agents_moved=num_agents_moved,
                 )
             else:
                 # 기존 base rewards 사용
@@ -1125,6 +1135,7 @@ class WildfireEnv(MultiGridEnv):
         extinguished_per_agent,
         agent_tree_extinguished,
         agent_on_fire_tree,
+        num_agents_moved,
     ):
         """
         reward shaping 함수를 사용하여 보상 계산
@@ -1147,6 +1158,8 @@ class WildfireEnv(MultiGridEnv):
             각 에이전트가 있는 나무가 진화되었는지 {agent_id: 0 or 1}
         agent_on_fire_tree : dict
             각 에이전트가 불타는 나무 위에 있는지 {agent_id: 0 or 1}
+        num_agents_moved : int
+            이번 스텝에 실제로 이동한 에이전트 수 (위치가 변경된 에이전트)
 
         Returns
         -------
@@ -1197,6 +1210,7 @@ class WildfireEnv(MultiGridEnv):
                 agent_tree_extinguished=agent_tree_extinguished,
                 agent_on_fire_tree=agent_on_fire_tree,
                 num_agents=self.num_agents,
+                num_agents_moved=num_agents_moved,
                 **self.reward_config
             )
             # 반환된 dict의 키를 문자열로 변환

@@ -99,6 +99,11 @@ def train_rllib_multiagent(
     num_agents = test_env.num_agents
     test_env.close()
 
+    # 이질적 에이전트 설정 추출
+    num_helicopters = env_config.get("num_helicopters", 0)
+    num_trucks = env_config.get("num_trucks", 0)
+    num_crews = env_config.get("num_crews", 0)
+
     print("=" * 60)
     print("RLlib 다중 에이전트 PPO 학습")
     print("=" * 60)
@@ -116,13 +121,16 @@ def train_rllib_multiagent(
         )
         .framework("torch")
         .training(
-            lr=3e-4,
-            gamma=0.99,
-            train_batch_size_per_learner=512,  # 새 API
+            lr=5e-4,
+            # lr=0.001,
+            # gamma=0.99,
+            gamma=0.95,
+            clip_param=0.3,
+            train_batch_size_per_learner=1024,  # 새 API
         )
         .env_runners(
-            num_env_runners=1,  # 로컬에서만 실행
-            num_envs_per_env_runner=1,
+            num_env_runners=2,  # 로컬에서만 실행
+            num_envs_per_env_runner=2,
         )
         .learners(
             num_learners=1,  # 로컬 learner 사용
@@ -131,10 +139,23 @@ def train_rllib_multiagent(
         .resources(
             num_gpus=0,  # CPU만 사용
         )
+        # .multi_agent(
+        #     # 간단한 정책 설정: 모든 에이전트가 같은 정책 공유
+        #     policies={"shared_policy"},
+        #     policy_mapping_fn=lambda agent_id, *args, **kwargs: "shared_policy",
+        # )
         .multi_agent(
-            # 간단한 정책 설정: 모든 에이전트가 같은 정책 공유
-            policies={"shared_policy"},
-            policy_mapping_fn=lambda agent_id, *args, **kwargs: "shared_policy",
+            # 이질적인 에이전트를 위한 정책 설정: Helicopter, Truck, Crew
+            policies={
+                "helicopter_policy",
+                "truck_policy",
+                "crew_policy"
+            },
+            policy_mapping_fn=lambda agent_id, *args, **kwargs: (
+                "helicopter_policy" if agent_id < num_helicopters
+                else "truck_policy" if agent_id < num_helicopters + num_trucks
+                else "crew_policy"
+            ),
         )
     )
 

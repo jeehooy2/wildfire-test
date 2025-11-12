@@ -72,34 +72,94 @@ def run_episode_and_render(algo, env_config, seed, policy_type="trained"):
             # 학습된 정책 사용
             import torch
 
-            # RLModule 가져오기
-            rl_module = algo.get_module("shared_policy")
+            # 이질적 에이전트 설정 확인
+            num_helicopters = env_config.get("num_helicopters", 0)
+            num_trucks = env_config.get("num_trucks", 0)
+            num_crews = env_config.get("num_crews", 0)
 
-            # 관찰을 배치로 변환
-            obs_batch = {
-                "obs": torch.tensor(np.array([obs[i] for i in range(env.num_agents)]), dtype=torch.float32)
-            }
+            # 이질적 에이전트를 사용하는지 확인
+            use_heterogeneous = (num_helicopters > 0 or num_trucks > 0 or num_crews > 0)
 
-            # forward_inference로 액션 계산
-            with torch.no_grad():
-                output = rl_module.forward_inference(obs_batch)
-                if "action_dist" in output:
-                    action_dist = output["action_dist"]
-                    action_tensor = action_dist.mode() if hasattr(action_dist, 'mode') else action_dist.sample()
-                elif "actions" in output:
-                    action_tensor = output["actions"]
-                else:
-                    from ray.rllib.models.torch.torch_distributions import TorchCategorical
-                    logits = output.get("action_dist_inputs", output)
-                    if isinstance(logits, dict):
-                        logits = logits.get("logits", list(logits.values())[0])
-                    action_dist = TorchCategorical(logits=logits)
-                    action_tensor = action_dist.mode() if hasattr(action_dist, 'mode') else torch.argmax(logits, dim=-1)
+            if use_heterogeneous:
+                # 이질적 에이전트: 각 에이전트별로 개별 정책 사용
+                actions = {}
+                for agent_id in range(env.num_agents):
+                    # 에이전트 타입에 따라 정책 선택
+                    if agent_id < num_helicopters:
+                        policy_name = "helicopter_policy"
+                    elif agent_id < num_helicopters + num_trucks:
+                        policy_name = "truck_policy"
+                    else:
+                        policy_name = "crew_policy"
 
-                actions_array = action_tensor.cpu().numpy()
+                    # RLModule 가져오기
+                    try:
+                        rl_module = algo.get_module(policy_name)
+                    except (KeyError, AttributeError) as e:
+                        # 디버깅: 사용 가능한 모듈 확인
+                        print(f"\nError getting module '{policy_name}': {e}")
+                        print(f"Trying to get available module keys...")
+                        try:
+                            # 새 API: learner_group에서 모듈 가져오기
+                            module_dict = algo.learner_group.get_module()
+                            print(f"Available modules: {list(module_dict.keys())}")
+                            rl_module = module_dict[policy_name]
+                        except Exception as e2:
+                            print(f"Error with learner_group: {e2}")
+                            raise
 
-            # 에이전트별로 액션 분리
-            actions = {i: int(actions_array[i]) for i in range(env.num_agents)}
+                    # 단일 에이전트 관찰을 배치로 변환
+                    obs_batch = {
+                        "obs": torch.tensor(np.array([obs[agent_id]]), dtype=torch.float32)
+                    }
+
+                    # forward_inference로 액션 계산
+                    with torch.no_grad():
+                        output = rl_module.forward_inference(obs_batch)
+                        if "action_dist" in output:
+                            action_dist = output["action_dist"]
+                            action_tensor = action_dist.mode() if hasattr(action_dist, 'mode') else action_dist.sample()
+                        elif "actions" in output:
+                            action_tensor = output["actions"]
+                        else:
+                            from ray.rllib.models.torch.torch_distributions import TorchCategorical
+                            logits = output.get("action_dist_inputs", output)
+                            if isinstance(logits, dict):
+                                logits = logits.get("logits", list(logits.values())[0])
+                            action_dist = TorchCategorical(logits=logits)
+                            action_tensor = action_dist.mode() if hasattr(action_dist, 'mode') else torch.argmax(logits, dim=-1)
+
+                        actions[agent_id] = int(action_tensor.cpu().numpy()[0])
+            else:
+                # 동질적 에이전트: shared_policy 사용
+                # RLModule 가져오기
+                rl_module = algo.get_module("shared_policy")
+
+                # 관찰을 배치로 변환
+                obs_batch = {
+                    "obs": torch.tensor(np.array([obs[i] for i in range(env.num_agents)]), dtype=torch.float32)
+                }
+
+                # forward_inference로 액션 계산
+                with torch.no_grad():
+                    output = rl_module.forward_inference(obs_batch)
+                    if "action_dist" in output:
+                        action_dist = output["action_dist"]
+                        action_tensor = action_dist.mode() if hasattr(action_dist, 'mode') else action_dist.sample()
+                    elif "actions" in output:
+                        action_tensor = output["actions"]
+                    else:
+                        from ray.rllib.models.torch.torch_distributions import TorchCategorical
+                        logits = output.get("action_dist_inputs", output)
+                        if isinstance(logits, dict):
+                            logits = logits.get("logits", list(logits.values())[0])
+                        action_dist = TorchCategorical(logits=logits)
+                        action_tensor = action_dist.mode() if hasattr(action_dist, 'mode') else torch.argmax(logits, dim=-1)
+
+                    actions_array = action_tensor.cpu().numpy()
+
+                # 에이전트별로 액션 분리
+                actions = {i: int(actions_array[i]) for i in range(env.num_agents)}
         else:
             # 랜덤 정책 사용
             actions = {i: env._action_space[i].sample() for i in range(env.num_agents)}
