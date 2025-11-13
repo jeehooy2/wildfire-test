@@ -29,6 +29,8 @@ cd train_rllib && uv run python train_rllib_mappo_new.py --iterations 1000 --che
 cd train_rllib && uv run python train_rllib_mappo_new.py --iterations 1000 --checkpoint-freq 10 --save-dir ./train_rllib/experiments/run2
 """
 
+#test
+
 import os
 import warnings
 import ray
