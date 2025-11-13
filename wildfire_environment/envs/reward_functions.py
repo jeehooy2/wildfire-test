@@ -118,11 +118,13 @@ def ramadan_reward(
 
 def individual_reward(
     trees_to_fire_state,
-    extinguished_per_agent,
+    trees_to_burnt_state,
+    agent_tree_extinguished,
     num_agents,
     r_extinguish=1.0,
     r_new_fire=0.5,
-    r_shared=0.3,
+    r_new_burnt=0.3,
+    r_shared=0.1,
 ):
     """
     Individual reward function based on per-agent contribution
@@ -141,8 +143,8 @@ def individual_reward(
     ----------
     trees_to_fire_state : list
         List of trees that caught fire this step
-    extinguished_per_agent : dict
-        Dictionary mapping agent index to number of trees they extinguished
+    agent_tree_extinguished : dict
+        Dictionary mapping agent index to 1 or 0 (extinguished or not)
     num_agents : int
         Number of agents in environment
     r_extinguish : float
@@ -157,19 +159,76 @@ def individual_reward(
     dict
         Dictionary mapping agent indices to rewards
     """
+    T_e = sum(agent_tree_extinguished.values())
     T_n = len(trees_to_fire_state)
-    T_e_global = sum(extinguished_per_agent.values())
+    T_b = len(trees_to_burnt_state)
+    shared_reward = r_extinguish * T_e - r_new_fire * T_n - r_new_burnt * T_b
 
     rewards = {}
     for i in range(num_agents):
         # Individual contribution: trees this agent extinguished
-        T_e_individual = extinguished_per_agent.get(i, 0)
-        individual_reward = r_extinguish * T_e_individual
+        extinguished_fire = agent_tree_extinguished.get(i, 0)
+        individual_reward = r_extinguish * extinguished_fire
 
         # Combined reward: individual + shared component
-        rewards[str(i)] = individual_reward + r_shared * (r_extinguish * T_e_global - r_new_fire * T_n)
+        rewards[str(i)] = individual_reward + r_shared * shared_reward
 
     return rewards
+
+# def individual_reward(
+#     trees_to_fire_state,
+#     extinguished_per_agent,
+#     num_agents,
+#     r_extinguish=1.0,
+#     r_new_fire=0.5,
+#     r_shared=0.3,
+# ):
+#     """
+#     Individual reward function based on per-agent contribution
+
+#     R_i = r_e * T_e_i + r_shared * (r_e * T_e_global - r_n * T_n)
+
+#     Where (per time step):
+#     - T_e_i: Trees extinguished by this specific agent this step
+#     - T_e_global: Total trees extinguished by all agents this step
+#     - T_n: New trees that caught fire this step
+#     - r_e: Reward weight for extinguishing fires
+#     - r_n: Penalty weight for new fires
+#     - r_shared: Weight for shared/cooperative component (0-1)
+
+#     Parameters
+#     ----------
+#     trees_to_fire_state : list
+#         List of trees that caught fire this step
+#     extinguished_per_agent : dict
+#         Dictionary mapping agent index to number of trees they extinguished
+#     num_agents : int
+#         Number of agents in environment
+#     r_extinguish : float
+#         Reward coefficient for extinguishing trees
+#     r_new_fire : float
+#         Penalty coefficient for new fires
+#     r_shared : float
+#         Weight for shared reward component (0-1)
+
+#     Returns
+#     -------
+#     dict
+#         Dictionary mapping agent indices to rewards
+#     """
+#     T_n = len(trees_to_fire_state)
+#     T_e_global = sum(extinguished_per_agent.values())
+
+#     rewards = {}
+#     for i in range(num_agents):
+#         # Individual contribution: trees this agent extinguished
+#         T_e_individual = extinguished_per_agent.get(i, 0)
+#         individual_reward = r_extinguish * T_e_individual
+
+#         # Combined reward: individual + shared component
+#         rewards[str(i)] = individual_reward + r_shared * (r_extinguish * T_e_global - r_new_fire * T_n)
+
+#     return rewards
 
 
 def individual2_reward(
@@ -254,9 +313,9 @@ DEFAULT_CONFIGS = {
         "d": 0.01,  # Weight for action count
     },
     "individual": {
-        "r_extinguish": 2.0,
+        "r_extinguish": 1.0,
         "r_new_fire": 0.5,
-        "r_shared": 0.3,
+        # "r_shared": 0.3,
     },
     "individual2": {
         "alpha": 0.3,  # Weight for shared/cooperative component

@@ -1194,7 +1194,8 @@ class WildfireEnv(MultiGridEnv):
             # individual reward: 각 에이전트의 기여도 기반 보상
             reward_dict = self.reward_function(
                 trees_to_fire_state=trees_to_fire_state,
-                extinguished_per_agent=extinguished_per_agent,
+                trees_to_burnt_state=trees_to_burnt_state,
+                agent_tree_extinguished=agent_tree_extinguished,
                 num_agents=self.num_agents,
                 **self.reward_config
             )

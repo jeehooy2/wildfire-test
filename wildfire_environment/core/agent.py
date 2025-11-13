@@ -602,8 +602,10 @@ class Helicopter(Agent):
             world, index, view_size, actions, dir_to_vec, color, bg_color, type="helicopter"
         )
         self.can_fly = True
-        self.speed = 1.5
-        self.efficiency = 1.0
+        self.speed = 2.0
+        self.efficiency = 2.0
+        # self.speed = 1.5 
+        # self.efficiency = 1.0
 
     def render(self, img):
         """Render the Helicopter agent with a circular shape
@@ -666,8 +668,10 @@ class Truck(Agent):
             world, index, view_size, actions, dir_to_vec, color, bg_color, type="truck"
         )
         self.can_fly = False
-        self.speed = 0.5
+        self.speed = 1.0
         self.efficiency = 1.0
+        # self.speed = 0.5
+        # self.efficiency = 1.0
 
     def render(self, img):
         """Render the truck agent with a rectangular shape

@@ -12,18 +12,18 @@ parameters, agent composition, fire dynamics, and reward settings.
 
 ENV_CONFIG = {
     # Grid and episode settings
-    "size":17,                     # Grid size (25x25)
-    "num_agents": 6,                # Total number of agents
+    "size":22,                     # Grid size (25x25)
+    "num_agents": 4,                # Total number of agents
     "max_steps": 300,              # Maximum steps per episode
-    "initial_fire_size": 2,         # Initial fire area (3x3)
+    "initial_fire_size": 3,         # Initial fire area (3x3)
 
     # Agent type configuration (must sum to num_agents)
     "num_helicopters": 2,           # Fast, high efficiency
     "num_trucks": 2,                # Medium speed, high efficiency
-    "num_crews": 2,                 # Slow, low efficiency
+    "num_crews": 0,                 # Slow, low efficiency
 
     # Agent start position
-    "agent_start_positions": ((15, 1),) * 6,
+    "agent_start_positions": ((15, 1),) * 4,
     # "agent_start_positions": ((20, 1),) * 9,
 
     # Fire dynamics parameters
@@ -47,21 +47,3 @@ ENV_CONFIG = {
     # Rendering
     "render_mode": "rgb_array",     # Required for GIF generation
 }
-
-
-# ENV_CONFIG = {
-#     "num_agents": 2,
-#         "size": 17,
-#         "initial_fire_size": 2,
-#         "cooperative_reward": False,  # 다중 에이전트 학습 (각자 보상)
-#         "max_steps": 300,
-#         "agent_start_positions": ((1, 1), (15, 15)),
-#         "log_selfish_region_metrics": True,
-#         "selfish_region_xmin": [7, 13],
-#         "selfish_region_xmax": [9, 15],
-#         "selfish_region_ymin": [7, 1],
-#         "selfish_region_ymax": [9, 3],
-#         "delta_beta": 0.7,     # ← 행동이 화재 소멸에 강하게 영향 주도록
-#         "beta": 0.99,          # 기본값 유지 가능
-#         "alpha": 0.05,         # 기본값 유지 가능(확산)
-# }
