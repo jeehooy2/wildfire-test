@@ -1,0 +1,5 @@
+# 학습 결과 파일 제외
+results/
+__pycache__/
+*.pyc
+*.pyo

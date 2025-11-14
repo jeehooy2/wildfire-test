@@ -23,8 +23,8 @@ import numpy as np
 import ray
 from ray.rllib.algorithms.ppo import PPO
 from ray.tune.registry import register_env
-from train_rllib.wildfire_rllib_wrapper_new import WildfireRLlibEnv
-from train_rllib.environment import ENV_CONFIG
+from train_marllib.wildfire_rllib_wrapper import WildfireRLlibEnv
+from train_marllib.environment import ENV_CONFIG
 
 
 def evaluate_policy(algo, env_config, num_episodes=10, policy_type="trained", seed=42):
