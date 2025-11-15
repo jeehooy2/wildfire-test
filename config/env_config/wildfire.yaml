@@ -1,0 +1,5 @@
+# Wildfire environment configuration for MARLlib
+# This file is required by MARLlib's make_env function
+
+env_args:
+  map_name: wildfire
