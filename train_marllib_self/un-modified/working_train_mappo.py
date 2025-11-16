@@ -126,12 +126,6 @@ if __name__ == '__main__':
         force_coop=False
     )
 
-    # # marl.make_env()는 튜플을 반환: (env, env_config)
-    # if isinstance(env, tuple):
-    #     env_real, _ = env
-    # else:
-    #     env_real = env
-
     # MAPPO 알고리즘 선택
     print(f"MAPPO 알고리즘 초기화 중...")
     mappo = marl.algos.mappo(
@@ -140,23 +134,6 @@ if __name__ == '__main__':
         # num_sgd_iter=10,  # SGD 반복 횟수 증가
         lr=0.0005         # 학습률 조정
     )
-
-    # # 환경에서 에이전트 타입별 개수 추출
-    # num_helicopters = ENV_CONFIG['num_helicopters']
-    # num_trucks = ENV_CONFIG['num_trucks']
-    # num_crews = ENV_CONFIG['num_crews']
-
-    # print(f"\n이질적 에이전트 설정:")
-    # print(f"  헬리콥터: {num_helicopters}대")
-    # print(f"  트럭: {num_trucks}대")
-    # print(f"  인력: {num_crews}명")
-
-    # # 모델 빌드 전에 공간 객체 저장
-    # print(f"\n공간 객체 저장 중...")
-    # obs_space = env_real.observation_space
-    # action_space = env_real.action_space
-    # print(f"  관찰 공간: {obs_space}")
-    # print(f"  액션 공간: {action_space}")
 
     # 모델 빌드
     print(f"모델 빌드 중...")
@@ -191,27 +168,15 @@ if __name__ == '__main__':
         env,
         model,
         stop={
-            # 'episode_reward_mean': 0,
-            # 'timesteps_total': 500000,
-            'training_iteration': 100
+            # 'episode_reward_mean': 1000,
+            # 'timesteps_total': 5000000,
+            'training_iteration': 1
         },
-        local_mode=False, #GPU?
+        local_mode=True, #GPU?
         num_gpus=1,
         num_workers=2,
-        share_policy='group', #all, group, individual
-        # multi_agent_config={
-        #     'policies': {
-        #         'helicopter_policy': (None, obs_space, action_space, {}),
-        #         'truck_policy': (None, obs_space, action_space, {}),
-        #         'crew_policy': (None, obs_space, action_space, {}),
-        #     },
-        #     'policy_mapping_fn': lambda agent_id, *args, **kwargs: (
-        #         "helicopter_policy" if agent_id < num_helicopters
-        #         else "truck_policy" if agent_id < num_helicopters + num_trucks
-        #         else "crew_policy"
-        #     )
-        # },
-        checkpoint_freq=10,
+        share_policy='all',
+        checkpoint_freq=1,
         local_dir=str(output_dir)  # fit() 메서드에 직접 전달
     )
 

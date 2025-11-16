@@ -12,15 +12,13 @@ import numpy as np
 from marllib import marl
 from marllib.envs.base_env import ENV_REGISTRY
 
-
 # Policy mapping dictionary for MARLlib
 policy_mapping_dict = {
     "wildfire-ma": {
-        "description": "wildfire suppression with heterogeneous agents",
-        # "team_prefix": ("agent_",),
-        "team_prefix": ("helicopter_", "truck_", "crew_"),
-        "all_agents_one_policy": False,  # 이질적 에이전트: 타입별로 다른 정책
-        "one_agent_one_policy": False,   # 같은 타입의 에이전트는 같은 정책 공유
+        "description": "cooperative wildfire suppression",
+        "team_prefix": ("agent_",),
+        "all_agents_one_policy": True,
+        "one_agent_one_policy": True,
     }
 }
 
@@ -76,34 +74,11 @@ class WildfireRLlibEnv(MultiAgentEnv):
 
         # 에이전트 수
         self._num_agents = self.env.num_agents
-        # self._agent_ids = set(range(self.num_agents))
-        #
-        # # RLlib 새 API에서 요구하는 속성들
-        # self.agents = list(range(self.num_agents))  # 현재 에피소드의 에이전트 ID 리스트
-        # self.possible_agents = list(range(self.num_agents))  # 가능한 모든 에이전트 ID 리스트
-
-        # 에이전트 ID를 타입별 프리픽스와 함께 생성 (MARLlib group sharing용)
-        # 예: helicopter_0, helicopter_1, truck_0, truck_1, crew_0, ...
-        num_helicopters = clean_config.get('num_helicopters', 0)
-        num_trucks = clean_config.get('num_trucks', 0)
-        num_crews = clean_config.get('num_crews', 0)
-
-        agent_ids = []
-        # 헬리콥터 에이전트
-        for i in range(num_helicopters):
-            agent_ids.append(f"helicopter_{i}")
-        # 트럭 에이전트
-        for i in range(num_trucks):
-            agent_ids.append(f"truck_{i}")
-        # 승무원 에이전트
-        for i in range(num_crews):
-            agent_ids.append(f"crew_{i}")
-
-        self._agent_ids = set(agent_ids)
+        self._agent_ids = set(range(self.num_agents))
 
         # RLlib 새 API에서 요구하는 속성들
-        self.agents = agent_ids  # 현재 에피소드의 에이전트 ID 리스트
-        self.possible_agents = agent_ids  # 가능한 모든 에이전트 ID 리스트
+        self.agents = list(range(self.num_agents))  # 현재 에피소드의 에이전트 ID 리스트
+        self.possible_agents = list(range(self.num_agents))  # 가능한 모든 에이전트 ID 리스트
 
         # 액션/관찰 공간 설정 (RLlib 형식)
         # Dict 공간에서 단일 에이전트 공간 추출
@@ -138,54 +113,26 @@ class WildfireRLlibEnv(MultiAgentEnv):
         else:
             obs_dict = result
 
-        # # wildfire env는 문자열 키("0", "1")를 사용, RLlib은 int 키를 사용
-        # # 문자열 키를 int로 변환하고 MARLlib 형식으로 래핑
-        # obs = {int(k): {"obs": v} for k, v in obs_dict.items()}
-
-        # wildfire env는 문자열 키("0", "1")를 사용
-        # 에이전트 타입별 프리픽스를 가진 에이전트 ID로 변환하고 MARLlib 형식으로 래핑
-        obs = {}
-        for idx, agent_id in enumerate(self.agents):
-            if str(idx) in obs_dict:
-                obs[agent_id] = {"obs": obs_dict[str(idx)]}
+        # wildfire env는 문자열 키("0", "1")를 사용, RLlib은 int 키를 사용
+        # 문자열 키를 int로 변환하고 MARLlib 형식으로 래핑
+        obs = {int(k): {"obs": v} for k, v in obs_dict.items()}
 
         return obs
 
     def step(self, action_dict):
         """환경 스텝 실행"""
-        # # RLlib은 int 키를 사용하지만, wildfire env는 문자열 키를 기대함
-        # # int 키를 문자열로 변환
-        # env_actions = {str(i): action_dict[i] for i in range(self.num_agents)}
-        #
-        # # 환경 실행 (5-tuple 반환: obs, reward, terminated, truncated, infos)
-        # # obs_dict, reward_dict, done, infos_env = self.env.step(env_actions)
-        # obs_dict, reward_dict, terminated, truncated, infos_dict = self.env.step(env_actions)
-        #
-        # # 결과를 RLlib 형식으로 변환 (문자열 키를 int로, MARLlib obs 형식으로 래핑)
-        # observations = {int(k): {"obs": v} for k, v in obs_dict.items()}
-        # rewards = {int(k): v for k, v in reward_dict.items()}
-        # infos = {int(k): v for k, v in infos_dict.items()}
-
-        # 에이전트 타입별 프리픽스 ID를 정수 기반 키로 변환하여 환경에 전달
-        env_actions = {}
-        for idx, agent_id in enumerate(self.agents):
-            if agent_id in action_dict:
-                env_actions[str(idx)] = action_dict[agent_id]
+        # RLlib은 int 키를 사용하지만, wildfire env는 문자열 키를 기대함
+        # int 키를 문자열로 변환
+        env_actions = {str(i): action_dict[i] for i in range(self.num_agents)}
 
         # 환경 실행 (5-tuple 반환: obs, reward, terminated, truncated, infos)
+        # obs_dict, reward_dict, done, infos_env = self.env.step(env_actions)
         obs_dict, reward_dict, terminated, truncated, infos_dict = self.env.step(env_actions)
 
-        # 결과를 RLlib 형식으로 변환 (프리픽스 ID로 다시 매핑, MARLlib obs 형식으로 래핑)
-        observations = {}
-        rewards = {}
-        infos = {}
-        for idx, agent_id in enumerate(self.agents):
-            if str(idx) in obs_dict:
-                observations[agent_id] = {"obs": obs_dict[str(idx)]}
-            if str(idx) in reward_dict:
-                rewards[agent_id] = reward_dict[str(idx)]
-            if str(idx) in infos_dict:
-                infos[agent_id] = infos_dict[str(idx)]
+        # 결과를 RLlib 형식으로 변환 (문자열 키를 int로, MARLlib obs 형식으로 래핑)
+        observations = {int(k): {"obs": v} for k, v in obs_dict.items()}
+        rewards = {int(k): v for k, v in reward_dict.items()}
+        infos = {int(k): v for k, v in infos_dict.items()}
 
         # dones = {"__all__": done}
         done = terminated or truncated

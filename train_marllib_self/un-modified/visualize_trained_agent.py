@@ -2,11 +2,6 @@
 학습된 MAPPO 에이전트의 실제 동작을 GIF로 시각화
 
 checkpoint_000200에서 모델을 로드하여 여러 시드로 에피소드 실행 및 GIF 생성
-
-python train_marllib_self/new_compare_visual.py 
---checkpoint train_marllib_self/experiments/mappo/run1/mappo_mlp_wildfire-ma/MAPPOTrainer_wildfire-ma_wildfire-ma_16fa4_00000_0_2025-11-16_05-07-03/checkpoint_000002
---episodes 3
---seed 42
 """
 
 import sys
@@ -101,20 +96,14 @@ def run_episode_and_render(env, policy_network, seed, max_steps=300):
     while not done and step < max_steps:
         # 각 에이전트의 액션 선택
         actions = {}
-        # # 구 코드: 정수 ID
-        # for agent_id in range(env.num_agents):
-        #     obs = obs_dict[str(agent_id)]
-        #     ...
-        #     actions[str(agent_id)] = action
-        # 새 코드: 문자열 프리픽스 ID
-        for agent_id in obs_dict.keys():
-            obs = obs_dict[agent_id]
+        for agent_id in range(env.num_agents):
+            obs = obs_dict[str(agent_id)]
             if policy_network is not None:
                 action = policy_network.get_action(obs)
             else:
                 # 랜덤 액션 (비교용)
-                action = env.action_space[agent_id].sample()
-            actions[agent_id] = action
+                action = env.action_space[str(agent_id)].sample()
+            actions[str(agent_id)] = action
 
         # 스텝 실행
         obs_dict, reward_dict, terminated, truncated, info_dict = env.step(actions)
@@ -198,21 +187,13 @@ def visualize_trained_agent(checkpoint_path, seeds=[0, 42, 123], use_trained=Tru
                     # Weights 구조 확인
                     print(f"  Checkpoint weights keys: {list(policy_weights.keys())[:5]}...")
 
-                    # # TorchPolicy는 '_model' 아래에 저장
-                    # if '_model' in policy_weights:
-                    #     model_weights = policy_weights['_model']
-                    #     policy_network.load_state_dict(model_weights, strict=False)
-                    #     print("  ✓ Policy weights 로드 완료!")
-                    # else:
-                    #     print("  ⚠ 예상 형식과 다름 - 학습된 weights 사용 불가")
-                    #     print("  → 랜덤 초기화된 네트워크 사용")
-
-                    # 간단히 직접 로드 시도
-                    try:
-                        policy_network.load_state_dict(policy_weights, strict=False)
+                    # TorchPolicy는 '_model' 아래에 저장
+                    if '_model' in policy_weights:
+                        model_weights = policy_weights['_model']
+                        policy_network.load_state_dict(model_weights, strict=False)
                         print("  ✓ Policy weights 로드 완료!")
-                    except Exception as load_error:
-                        print(f"  ⚠ 직접 로드 실패: {load_error}")
+                    else:
+                        print("  ⚠ 예상 형식과 다름 - 학습된 weights 사용 불가")
                         print("  → 랜덤 초기화된 네트워크 사용")
 
                 except Exception as e:
