@@ -22,8 +22,9 @@ ENV_CONFIG = {
     "num_trucks": 2,                # Medium speed, high efficiency
     "num_crews": 0,                 # Slow, low efficiency
 
-    # Agent start position
-    "agent_start_positions": ((15, 1),) * 4,
+    # Agent start position (각 에이전트를 다른 위치에 배치)
+    # Grid corners for 4 agents: top-left, top-right, bottom-left, bottom-right
+    "agent_start_positions": ((1, 1), (1, 20), (20, 1), (20, 20)),
     # "agent_start_positions": ((20, 1),) * 9,
 
     # Fire dynamics parameters

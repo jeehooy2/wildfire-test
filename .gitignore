@@ -3,3 +3,5 @@
 
 *checkpoints*
 *.egg-info
+exp_results*
+*/__pycache__/*

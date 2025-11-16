@@ -5,10 +5,12 @@ import numpy as np
 # Only ask users to install matplotlib if they actually need it
 try:
     import matplotlib.pyplot as plt
-except:
-    print("To display the environment in a window, please install matplotlib, eg:")
-    print("pip3 install --user matplotlib")
-    sys.exit(-1)
+    MATPLOTLIB_AVAILABLE = True
+except ImportError:
+    plt = None
+    MATPLOTLIB_AVAILABLE = False
+    print("Warning: matplotlib not installed. Window rendering will not be available.")
+    print("To enable window rendering, install matplotlib: pip install matplotlib")
 
 
 class Window:
@@ -17,6 +19,12 @@ class Window:
     """
 
     def __init__(self, title: str) -> None:
+        if not MATPLOTLIB_AVAILABLE:
+            raise ImportError(
+                "matplotlib is required for window rendering. "
+                "Install it with: pip install matplotlib"
+            )
+
         self.fig = None
 
         self.imshow_obj = None
