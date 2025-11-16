@@ -21,6 +21,8 @@ from marllib.envs.global_reward_env import COOP_ENV_REGISTRY
 from train_marllib_self.new_wrapper import WildfireRLlibEnv
 from train_marllib_self.environment import ENV_CONFIG
 
+import argparse
+from datetime import datetime
 
 def setup_marllib_config():
     """MARLlib 패키지 내부에 wildfire.yaml 설정 파일을 자동 생성"""
@@ -105,7 +107,12 @@ if __name__ == '__main__':
 
     # MAPPO 알고리즘 선택
     print(f"MAPPO 알고리즘 초기화 중...")
-    mappo = marl.algos.mappo(hyperparam_source="common")
+    mappo = marl.algos.mappo(
+        hyperparam_source="common",
+        # batch_episode=10,
+        # num_sgd_iter=10,  # SGD 반복 횟수 증가
+        # lr=0.0003         # 학습률 조정
+    )
 
     # 모델 빌드
     print(f"모델 빌드 중...")
@@ -134,11 +141,11 @@ if __name__ == '__main__':
     print("학습 시작")
     print("=" * 80)
     print(f"  Share policy: all")
-    print(f"  Workers: 2")
-    print(f"  GPUs: 0")
-    print(f"  Checkpoint frequency: 50")
-    print(f"  Target reward: 1000")
-    print(f"  Max timesteps: 5000000")
+    # print(f"  Workers: 2")
+    # print(f"  GPUs: 1")
+    # print(f"  Checkpoint frequency: 50")
+    # print(f"  Target reward: 1000")
+    # print(f"  Max timesteps: 5000000")
     print("=" * 80 + "\n")
 
     mappo.fit(
@@ -146,7 +153,8 @@ if __name__ == '__main__':
         model,
         stop={
             'episode_reward_mean': 1000,
-            'timesteps_total': 5000000
+            'timesteps_total': 5000000,
+            # 'training_iteration': 100
         },
         local_mode=True,
         num_gpus=1,

@@ -7,6 +7,25 @@ wildfire-v0 환경을 MARLlib 프레임워크와 통합하여 MAPPO 알고리즘
 
 ---
 
+## 0. 환경 설정 변경
+```
+wheel==0.38.0
+protobuf==3.20.3
+ray==1.8.0
+ray[tune]==1.8.0
+ray[rllib]==1.8.0
+icecream==2.1.3
+torch==1.9.0
+pettingzoo==1.12.0
+pettingzoo[mpe]==1.12.0
+supersuit==3.2.0
+numpy==1.21.0
+importlib-metadata==4.13.0
+gym==0.22.0
+PyYAML
+matplotlib
+```
+
 ## 1. 프로젝트 파일 수정
 
 ### 1.1 `train_marllib_self/new_train_mappo.py`
