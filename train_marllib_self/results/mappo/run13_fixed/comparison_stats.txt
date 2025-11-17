@@ -1,0 +1,25 @@
+Trained vs Random Agent Visualization Stats (Heterogeneous Agents)
+================================================================================
+
+Checkpoint: train_marllib_self/experiments/mappo/run13_fixed/mappo_mlp_wildfire-ma/MAPPOTrainer_wildfire-ma_wildfire-ma_61526_00000_0_2025-11-17_04-17-50/checkpoint_000150
+Agent Configuration:
+  - Helicopters: 2
+  - Trucks: 4
+  - Crews: 0
+Seeds: [42, 43, 44]
+
+Episode 1 (Seed 42):
+  Trained Reward: 10.39
+  Random Reward: -19.69
+
+Episode 2 (Seed 43):
+  Trained Reward: 5.80
+  Random Reward: -19.05
+
+Episode 3 (Seed 44):
+  Trained Reward: 13.70
+  Random Reward: -21.55
+
+--------------------------------------------------------------------------------
+Avg Trained Reward: 9.96 ± 3.24
+Avg Random Reward: -20.10 ± 1.06
