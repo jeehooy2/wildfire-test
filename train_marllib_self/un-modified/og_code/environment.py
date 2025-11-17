@@ -13,18 +13,18 @@ parameters, agent composition, fire dynamics, and reward settings.
 ENV_CONFIG = {
     # Grid and episode settings
     "size":22,                     # Grid size (25x25)
-    "num_agents": 6,                # Total number of agents
+    "num_agents": 4,                # Total number of agents
     "max_steps": 300,              # Maximum steps per episode
     "initial_fire_size": 3,         # Initial fire area (3x3)
 
     # Agent type configuration (must sum to num_agents)
     "num_helicopters": 2,           # Fast, high efficiency
-    "num_trucks": 4,                # Medium speed, high efficiency
+    "num_trucks": 2,                # Medium speed, high efficiency
     "num_crews": 0,                 # Slow, low efficiency
 
     # Agent start position (각 에이전트를 다른 위치에 배치)
     # Grid corners for 4 agents: top-left, top-right, bottom-left, bottom-right
-    "agent_start_positions": ((18, 1), (20, 3), (19, 1), (20, 1), (20, 2), (19, 2)),
+    "agent_start_positions": ((1, 1), (1, 20), (20, 1), (20, 20)),
     # "agent_start_positions": ((20, 1),) * 9,
 
     # Fire dynamics parameters

@@ -148,9 +148,6 @@ if __name__ == '__main__':
         # num_sgd_iter=10,  # SGD 반복 횟수 증가
         lr=0.0005,        # 학습률 조정
         clip_param=0.3
-        # algorithm_config={
-        #     "clip_param": 0.3  # <-- We need algorithm_config for this
-        # }
     )
 
     # # 환경에서 에이전트 타입별 개수 추출
@@ -207,7 +204,7 @@ if __name__ == '__main__':
             'timesteps_total': 5000000,
             # 'training_iteration': 100
         },
-        local_mode=False, # GPU
+        local_mode=True, # GPU
         num_gpus=1,
         num_workers=2,
         share_policy='group', #all, group, individual
@@ -224,9 +221,10 @@ if __name__ == '__main__':
         #     )
         # },
         checkpoint_freq=10,
-        # verbose=2,
+        verbose=2,
         local_dir=str(output_dir),  # fit() 메서드에 직접 전달
         evaluation_interval=None
+
     )
 
     print("\n" + "=" * 80)
