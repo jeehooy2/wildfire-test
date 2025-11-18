@@ -109,6 +109,7 @@ class Agent(WorldObj):
         self.init_dir = None
         self.index = index
         self.view_size = view_size
+        self.partial_obs_size = 5  # 에이전트 중심 관찰 영역 크기 (partial_obs=True일 때 사용)
         self.carrying = None
         self.terminated = False
         self.started = True

@@ -65,8 +65,7 @@ def get_policy_mapping_dict(num_helicopters, num_trucks, num_crews):
         "wildfire-ma": {
             "description": "wildfire suppression with heterogeneous agents",
             "team_prefix": tuple(team_prefix),
-            # "all_agents_one_policy": False,  # 이질적 에이전트: 타입별로 다른 정책
-            "all_agents_one_policy": True,
+            "all_agents_one_policy": False,  # 이질적 에이전트: 타입별로 다른 정책
             "one_agent_one_policy": False,   # 같은 타입의 에이전트는 같은 정책 공유
         }
     }

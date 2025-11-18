@@ -34,8 +34,8 @@ ENV_CONFIG = {
     "delta_beta": 0.54,             # Fire decay/burnout parameter
 
     # Observation settings
-    "partial_obs": False,           # Full observability (recommended to start)
-    "agent_view_size": 10,          # Only used if partial_obs=True
+    "partial_obs": True,           # Full observability (recommended to start)
+    "agent_view_size": 5,         # Only used if partial_obs=True
 
     # Reward settings
     "cooperative_reward": False,     # All agents share same reward (MAPPO standard)

@@ -11,7 +11,6 @@ python train_marllib_self/new_train_mappo.py --run-name run1
 """
 
 import os
-
 os.environ["TUNE_REPORTER_INTERVAL_S"] = "60"
 
 import sys
@@ -210,7 +209,7 @@ if __name__ == '__main__':
         local_mode=False, # GPU
         num_gpus=1,
         num_workers=2,
-        share_policy='all', #all, group, individual
+        share_policy='group', #all, group, individual
         # multi_agent_config={
         #     'policies': {
         #         'helicopter_policy': (None, obs_space, action_space, {}),

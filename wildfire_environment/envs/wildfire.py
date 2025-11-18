@@ -301,21 +301,59 @@ class WildfireEnv(MultiGridEnv):
             dictionary where each key is an agent's index and the value is the observation space
             for that agent
         """
+        # TODO: 관찰 공간 수정 (partial_obs) ###
         # observation vector of agent is the concatenation of obs_depth number of one-hot encodings where each encoding has grid_size_without_walls number of elements valued either 0 or 1. Additionally, the observation vector contains the normalized time step at the end
-        low = np.full(self.obs_depth * ((self.grid_size_without_walls + 1) ** 2) + 1, 0)
-        high = np.full(
-            self.obs_depth * ((self.grid_size_without_walls + 1) ** 2) + 1, 1
-        )
-        observation_space = Dict(
-            {
-                f"{a.index}": Box(
-                    low=low,
-                    high=high,
-                    dtype=np.float32,
-                )
-                for a in self.agents
-            }
-        )
+        # low = np.full(self.obs_depth * ((self.grid_size_without_walls + 1) ** 2) + 1, 0)
+        # high = np.full(
+        #     self.obs_depth * ((self.grid_size_without_walls + 1) ** 2) + 1, 1
+        # )
+        # observation_space = Dict(
+        #     {
+        #         f"{a.index}": Box(
+        #             low=low,
+        #             high=high,
+        #             dtype=np.float32,
+        #         )
+        #         for a in self.agents
+        #     }
+        # )
+
+        if self.partial_obs:
+            # Partial observability: 에이전트 중심 partial_obs_size x partial_obs_size 그리드 (flattened)
+            # obs_depth = num_agents + len(tree states)
+            # Shape: obs_depth * partial_view_size * partial_view_size + 1 (timestep)
+            partial_view_size = self.agents[0].partial_obs_size
+            obs_size = self.obs_depth * (partial_view_size ** 2) + 1
+
+            low = np.full(obs_size, 0)
+            high = np.full(obs_size, 1)
+            observation_space = Dict(
+                {
+                    f"{a.index}": Box(
+                        low=low,
+                        high=high,
+                        dtype=np.float32,
+                    )
+                    for a in self.agents
+                }
+            )
+        else:
+            # Full observability: 전체 그리드 (기존 방식)
+            low = np.full(self.obs_depth * ((self.grid_size_without_walls + 1) ** 2) + 1, 0)
+            high = np.full(
+                self.obs_depth * ((self.grid_size_without_walls + 1) ** 2) + 1, 1
+            )
+            observation_space = Dict(
+                {
+                    f"{a.index}": Box(
+                        low=low,
+                        high=high,
+                        dtype=np.float32,
+                    )
+                    for a in self.agents
+                }
+            )
+        ### 관찰 공간 수정 끝! ###
 
         return observation_space
 
@@ -474,6 +512,13 @@ class WildfireEnv(MultiGridEnv):
         agent_obs: list(ndarray)
             list of agent observations where the element at i^th list index is the observation vector for the agent with index i.
         """
+        if self.partial_obs:
+            return self._get_obs_partial()
+        else:
+            return self._get_obs_full()
+
+    def _get_obs_full(self):
+        """Get full observation (entire grid) for all agents."""
         # initialize list of observation vector of each agent
         agent_obs = [
             np.zeros(
@@ -536,6 +581,80 @@ class WildfireEnv(MultiGridEnv):
                 np.array(self.step_count / self.max_steps, dtype=np.float32),
             )
         return agent_obs
+
+    def _get_obs_partial(self):
+        """Get partial observation (centered grid around each agent) for all agents."""
+        # TODO: partial obs 관찰 생성 ###
+        agent_obs = []
+
+        for a in self.agents:
+            partial_view_size = a.partial_obs_size  # 에이전트의 partial_obs_size 사용 (기본값: 5)
+            half_view = partial_view_size // 2  # 2 (5x5의 경우)
+
+            # obs_depth = num_agents + num_tree_states
+            obs = np.zeros(
+                (
+                    self.obs_depth,
+                    partial_view_size,
+                    partial_view_size,
+                ),
+                dtype=np.float32,
+            )
+
+            agent_x, agent_y = a.pos
+
+            # 에이전트 중심으로 partial_view_size x partial_view_size 영역 추출
+            for dx in range(-half_view, half_view + 1):
+                for dy in range(-half_view, half_view + 1):
+                    world_x = agent_x + dx
+                    world_y = agent_y + dy
+
+                    # 그리드 범위 체크 (벽 포함)
+                    if 0 <= world_x < self.grid_size and 0 <= world_y < self.grid_size:
+                        # partial_view_size x partial_view_size 그리드 내 로컬 좌표
+                        local_x = dx + half_view
+                        local_y = dy + half_view
+
+                        # 이 위치의 객체 가져오기
+                        obj = self.helper_grid.get(world_x, world_y)
+
+                        if obj is not None:
+                            if obj.type == "tree":
+                                obs[obj.state, local_y, local_x] = 1
+                            elif obj.type == "wall":
+                                obs[
+                                    len(STATE_IDX_TO_COLOR_WILDFIRE), local_y, local_x
+                                ] = 1
+
+            # partial_view_size 영역 내의 다른 에이전트 위치 추가
+            for o in self.agents:
+                if o.index != a.index:
+                    other_x, other_y = o.pos
+
+                    # 다른 에이전트가 뷰 내에 있는지 확인
+                    dx = other_x - agent_x
+                    dy = other_y - agent_y
+
+                    if abs(dx) <= half_view and abs(dy) <= half_view:
+                        local_x = dx + half_view
+                        local_y = dy + half_view
+
+                        idx = o.index - int(np.heaviside(o.index - a.index, 0))
+                        obs[
+                            len(STATE_IDX_TO_COLOR_WILDFIRE) + 1 + idx,
+                            local_y,
+                            local_x,
+                        ] = 1
+
+            # Flatten and append normalized time step
+            obs = np.append(
+                obs.flatten(),
+                np.array(self.step_count / self.max_steps, dtype=np.float32),
+            )
+            agent_obs.append(obs)
+
+        return agent_obs
+        ### partial obs 관찰 생성 끝! ###
 
     def get_state(self):
         """Get the state representation of the environment.
@@ -717,12 +836,19 @@ class WildfireEnv(MultiGridEnv):
             self.cumulative_actions = 0
 
         # reset the grid
+        # Temporarily set partial_obs to False to prevent parent's gen_obs() call
+        # which would fail with our partial observation setup
+        original_partial_obs = self.partial_obs
+        self.partial_obs = False
+
         if state is not None:
             super().reset(seed=seed, state=state)
         else:
             super().reset(seed=seed)
 
-        # get agent observations
+        self.partial_obs = original_partial_obs
+
+        # get agent observations (use our custom _get_obs() instead of parent's)
         agent_obs = self._get_obs()
         obs = OrderedDict({f"{a.index}": agent_obs[a.index] for a in self.agents})
 
