@@ -9,17 +9,17 @@ Agent Configuration:
 Seeds: [42, 43, 44]
 
 Episode 1 (Seed 42):
-  Trained Reward: 2.61
-  Random Reward: -21.42
+  Trained Reward: -18.32
+  Random Reward: -13.39
 
 Episode 2 (Seed 43):
-  Trained Reward: 4.64
-  Random Reward: -18.28
+  Trained Reward: -17.11
+  Random Reward: -15.44
 
 Episode 3 (Seed 44):
-  Trained Reward: 1.73
-  Random Reward: -17.64
+  Trained Reward: -10.22
+  Random Reward: -14.88
 
 --------------------------------------------------------------------------------
-Avg Trained Reward: 2.99 ± 1.22
-Avg Random Reward: -19.11 ± 1.65
+Avg Trained Reward: -15.21 ± 3.57
+Avg Random Reward: -14.57 ± 0.86

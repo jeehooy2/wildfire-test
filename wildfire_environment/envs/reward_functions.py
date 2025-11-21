@@ -12,10 +12,9 @@ import numpy as np
 
 def cooperative_reward(
     trees_to_fire_state,
-    trees_extinguished_by_agents,
+    trees_to_burnt_state,
+    trees_to_healthy_state,
     num_agents,
-    r_extinguish=1.0,
-    r_new_fire=0.5,
 ):
     """
     Cooperative reward function - all agents receive same reward
@@ -32,28 +31,36 @@ def cooperative_reward(
     ----------
     trees_to_fire_state : list
         List of trees that caught fire this step
-    trees_extinguished_by_agents : int
-        Total number of trees extinguished by agents this step
+    trees_to_burnt_state : list
+        List of trees that caught fire this step
+    trees_to_healthy_state : list
+        List of trees that were extinguished (on_fire -> healthy)
     num_agents : int
         Number of agents in environment
-    r_extinguish : float
-        Reward coefficient for extinguishing trees
-    r_new_fire : float
-        Penalty coefficient for new fires
 
     Returns
     -------
     dict
         Dictionary mapping agent indices to rewards
     """
-    T_e = trees_extinguished_by_agents
+    T_e = len(trees_to_healthy_state)
     T_n = len(trees_to_fire_state)
+    T_b = len(trees_to_burnt_state)
+    shared_reward = 1.0 * T_e - 0.5 * T_n - 0.3 * T_b
 
-    # Compute cooperative reward
-    reward = r_extinguish * T_e - r_new_fire * T_n
+    return {str(i): shared_reward for i in range(num_agents)}
 
-    # All agents get same reward
-    return {str(i): reward for i in range(num_agents)}
+    # rewards = {}
+    # for i in range(num_agents):
+    #     # Individual contribution: trees this agent extinguished
+    #     extinguished_fire = agent_tree_extinguished.get(i, 0)
+    #     individual_reward = 1.0 * extinguished_fire
+
+    #     # Combined reward: individual + shared component
+    #     rewards[str(i)] = shared_reward  + individual_reward
+
+    # return rewards
+
 
 
 def ramadan_reward(
@@ -145,6 +152,7 @@ def individual_reward(
         List of trees that caught fire this step
     agent_tree_extinguished : dict
         Dictionary mapping agent index to 1 or 0 (extinguished or not)
+    agent_tree_extinguished : dict (이번 스텝에 진화한 나무 개수)
     num_agents : int
         Number of agents in environment
     r_extinguish : float
@@ -303,8 +311,6 @@ def individual2_reward(
 # Default configurations for each reward function
 DEFAULT_CONFIGS = {
     "cooperative": {
-        "r_extinguish": 1.0,
-        "r_new_fire": 0.5,
     },
     "ramadan": {
         "a": 0.1,   # Weight for preserved trees
@@ -315,13 +321,14 @@ DEFAULT_CONFIGS = {
     "individual": {
         "r_extinguish": 1.0,
         "r_new_fire": 0.5,
-        # "r_shared": 0.3,
     },
     "individual2": {
         "alpha": 0.3,  # Weight for shared/cooperative component
     },
 }
 
+
+ # "r_shared": 0.3,
 
 def get_reward_function(reward_type):
     """

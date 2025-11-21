@@ -109,7 +109,7 @@ class Agent(WorldObj):
         self.init_dir = None
         self.index = index
         self.view_size = view_size
-        self.partial_obs_size = 5  # 에이전트 중심 관찰 영역 크기 (partial_obs=True일 때 사용)
+        self.partial_obs_size = 11 # 에이전트 중심 관찰 영역 크기 (partial_obs=True일 때 사용) 
         self.carrying = None
         self.terminated = False
         self.started = True
@@ -603,10 +603,10 @@ class Helicopter(Agent):
             world, index, view_size, actions, dir_to_vec, color, bg_color, type="helicopter"
         )
         self.can_fly = True
+        # self.speed = 2.0
+        # self.efficiency = 1.5
         self.speed = 2.0
-        self.efficiency = 2.0
-        # self.speed = 1.5 
-        # self.efficiency = 1.0
+        self.efficiency = 1.5
 
     def render(self, img):
         """Render the Helicopter agent with a circular shape

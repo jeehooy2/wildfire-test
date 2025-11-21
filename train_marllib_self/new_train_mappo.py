@@ -22,7 +22,7 @@ if project_root not in sys.path:
 from marllib import marl
 from marllib.envs.base_env import ENV_REGISTRY
 from marllib.envs.global_reward_env import COOP_ENV_REGISTRY
-from train_marllib_self.new_wrapper import WildfireRLlibEnv
+from train_marllib_self.new_wrapper_global import WildfireRLlibEnv
 from train_marllib_self.environment import ENV_CONFIG
 
 import argparse
@@ -65,10 +65,10 @@ env_args:
   selfishness_weight: {ENV_CONFIG['selfishness_weight']}
   reward_shaping: {ENV_CONFIG['reward_shaping']}
   reward_shaping_config: {ENV_CONFIG['reward_shaping_config']}
-  render_mode: {ENV_CONFIG['render_mode']}
+  render_mode: {ENV_CONFIG['render_mode']} 
 
 mask_flag: False
-global_state_flag: False
+global_state_flag: True
 """
     yaml_file.write_text(yaml_content)
     print(f"  Created/Updated config file: {yaml_file}")
@@ -145,7 +145,8 @@ if __name__ == '__main__':
         hyperparam_source="common",
         batch_episode=10,
         # num_sgd_iter=10,  # SGD 반복 횟수 증가
-        lr=0.0005,        # 학습률 조정
+        lr=0.0005,
+        # lr=0.0005,        # 학습률 조정
         clip_param=0.3
         # algorithm_config={
         #     "clip_param": 0.3  # <-- We need algorithm_config for this
@@ -182,16 +183,17 @@ if __name__ == '__main__':
 
     # MARLlib config에 필수 설정 추가 (mappo() 호출 후에 수정)
     if mappo.config_dict is not None:
-        mappo.config_dict["opp_action_in_cc"] = False
-        mappo.config_dict["global_state_flag"] = False
+        # mappo.config_dict["opp_action_in_cc"] = False
+        # mappo.config_dict["global_state_flag"] = False
         mappo.config_dict["local_dir"] = str(output_dir)  # 커스텀 출력 경로
     else:
         # config_dict가 None이면 직접 초기화
         mappo.config_dict = {
-            "opp_action_in_cc": False,
-            "global_state_flag": False,
             "local_dir": str(output_dir)  # 커스텀 출력 경로
         }
+
+        # "opp_action_in_cc": False,
+        # "global_state_flag": False,
 
     # 학습 시작
     print("\n" + "=" * 80)
@@ -222,7 +224,7 @@ if __name__ == '__main__':
         #         else "crew_policy"
         #     )
         # },
-        checkpoint_freq=10,
+        checkpoint_freq=25,
         # verbose=2,
         local_dir=str(output_dir),  # fit() 메서드에 직접 전달
         evaluation_interval=None

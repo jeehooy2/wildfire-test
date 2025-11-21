@@ -1,0 +1,40 @@
+Wildfire Environment Random Actions Visualization Stats
+================================================================================
+
+Environment Configuration:
+  Grid size: 22x22
+  Max steps: 300
+  Initial fire size: 3
+
+Agent Configuration:
+  - Helicopters: 2
+  - Trucks: 4
+  - Crews: 0
+  - Total: 6
+
+Fire Dynamics:
+  - Alpha (spread probability): 0.05
+  - Beta (fire intensity): 0.9
+  - Delta beta (fire decay): 0.54
+
+Visualization Parameters:
+  - Number of episodes: 3
+  - Starting seed: 42
+  - FPS: 10
+
+Results:
+  Episode 1 (Seed 42):
+    Reward: -21.66
+    Length: 236
+  Episode 2 (Seed 43):
+    Reward: -18.41
+    Length: 123
+  Episode 3 (Seed 44):
+    Reward: -17.84
+    Length: 193
+
+Summary:
+  Average Reward: -19.30 ± 1.68
+  Average Episode Length: 184.00 ± 46.57
+  Max Reward: -17.84
+  Min Reward: -21.66

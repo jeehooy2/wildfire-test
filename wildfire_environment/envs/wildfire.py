@@ -856,7 +856,40 @@ class WildfireEnv(MultiGridEnv):
         info = {"burnt trees": self.burnt_trees}
         return obs, info
 
-    def move_agent(self, i, next_pos):
+    # def move_agent(self, i, next_pos):
+    #     """Move agent to a new position in the grid
+
+    #     Parameters
+    #     ----------
+    #     i : int
+    #         index of agent to be moved
+    #     next_pos : tuple[int, int]
+    #         coordinates of new position
+    #     """
+    #     # Update agent direction based on movement
+    #     if self.agents[i].pos is not None:
+    #         direction = np.array(next_pos) - np.array(self.agents[i].pos)
+    #         # Find matching direction in dir_to_vec
+    #         for dir_idx, vec in enumerate(self.agents[i].dir_to_vec):
+    #             if np.array_equal(vec, direction):
+    #                 self.agents[i].dir = dir_idx
+    #                 break
+
+    #     # add agent to grid in new position
+    #     self.grid.set(*next_pos, self.agents[i])
+
+    #     # get tree in agent's old position from helper grid and add tree to grid
+    #     tree = self.helper_grid.get(*self.agents[i].pos)
+    #     tree.agent_above = False
+    #     self.grid.set(*self.agents[i].pos, tree)
+
+    #     # update attributes
+    #     next_tree = self.helper_grid.get(*next_pos)
+    #     next_tree.agent_above = True
+    #     self.agents[i].pos = next_pos
+
+    ## TODO: 지나간 경로도 진화(4) ##
+    def move_agent(self, i, next_pos, agent_path_trees=None):
         """Move agent to a new position in the grid
 
         Parameters
@@ -865,7 +898,32 @@ class WildfireEnv(MultiGridEnv):
             index of agent to be moved
         next_pos : tuple[int, int]
             coordinates of new position
+        agent_path_trees : dict, optional
+            dictionary to track trees along the path of each agent
         """
+
+        # 에이전트가 현재 위치와 다음 위치 사이의 경로상 trees를 추적
+        if agent_path_trees is not None:
+            current_pos = np.array(self.agents[i].pos)
+            next_pos_arr = np.array(next_pos)
+            direction = next_pos_arr - current_pos
+
+            # 이동 거리 계산 (대각선/직선 모두 적용)
+            steps = max(abs(direction[0]), abs(direction[1]))
+            if steps > 1:
+                # 1칸씩 이동하는 것을 시뮬레이션하여 모든 중간 지점들을 수집
+                # 대각선 이동: step_direction은 (1,1), (1,-1) 등의 방향
+                # 직선 이동: step_direction은 (1,0), (0,1) 등의 방향
+                step_direction = direction / steps
+                for step in range(1, steps):
+                    intermediate_pos = tuple(current_pos + step_direction * step)
+                    intermediate_pos = (int(intermediate_pos[0]), int(intermediate_pos[1]))
+                    if intermediate_pos != tuple(current_pos) and intermediate_pos != tuple(next_pos_arr):
+                        tree = self.helper_grid.get(*intermediate_pos)
+                        if tree and tree.type == "tree":
+                            agent_path_trees[i].append(tree)
+
+
         # Update agent direction based on movement
         if self.agents[i].pos is not None:
             direction = np.array(next_pos) - np.array(self.agents[i].pos)
@@ -978,6 +1036,11 @@ class WildfireEnv(MultiGridEnv):
         # Save initial positions to track which agents actually moved
         initial_positions = {i: tuple(agent.pos) for i, agent in enumerate(self.agents)}
 
+        ## TODO: 지나간 경로도 진화(1) ##
+        agent_path_trees = {i: [] for i in range(self.num_agents)}
+        ## END: 지나간 경로도 진화(1) ##
+
+
         # 1) Move agents sequentially, in random order
         order = np.random.permutation(len(actions))
         for i in order:
@@ -1001,47 +1064,93 @@ class WildfireEnv(MultiGridEnv):
             # - Speed 1.5: alternates 1 and 2 moves (step 1: 1 move, step 2: 2 moves, step 3: 1 move...)
 
             # Execute the moves
+            # for _ in range(num_moves):
+            #     if actions[i] == self.actions.NORTH:
+            #         next_pos = self.agents[i].north_pos()
+            #         next_cell = self.grid.get(*next_pos)
+            #         if next_cell is None or next_cell.can_overlap():
+            #             self.move_agent(i, next_pos) 
+            #     elif actions[i] == self.actions.SOUTH:
+            #         next_pos = self.agents[i].south_pos()
+            #         next_cell = self.grid.get(*next_pos)
+            #         if next_cell is None or next_cell.can_overlap():
+            #             self.move_agent(i, next_pos)
+            #     elif actions[i] == self.actions.EAST:
+            #         next_pos = self.agents[i].east_pos()
+            #         next_cell = self.grid.get(*next_pos)
+            #         if next_cell is None or next_cell.can_overlap():
+            #             self.move_agent(i, next_pos)
+            #     elif actions[i] == self.actions.WEST:
+            #         next_pos = self.agents[i].west_pos()
+            #         next_cell = self.grid.get(*next_pos)
+            #         if next_cell is None or next_cell.can_overlap():
+            #             self.move_agent(i, next_pos)
+            #     elif actions[i] == self.actions.NORTH_EAST:
+            #         next_pos = self.agents[i].north_east_pos()
+            #         next_cell = self.grid.get(*next_pos)
+            #         if next_cell is None or next_cell.can_overlap():
+            #             self.move_agent(i, next_pos)
+            #     elif actions[i] == self.actions.NORTH_WEST:
+            #         next_pos = self.agents[i].north_west_pos()
+            #         next_cell = self.grid.get(*next_pos)
+            #         if next_cell is None or next_cell.can_overlap():
+            #             self.move_agent(i, next_pos)
+            #     elif actions[i] == self.actions.SOUTH_EAST:
+            #         next_pos = self.agents[i].south_east_pos()
+            #         next_cell = self.grid.get(*next_pos)
+            #         if next_cell is None or next_cell.can_overlap():
+            #             self.move_agent(i, next_pos)
+            #     elif actions[i] == self.actions.SOUTH_WEST:
+            #         next_pos = self.agents[i].south_west_pos()
+            #         next_cell = self.grid.get(*next_pos)
+            #         if next_cell is None or next_cell.can_overlap():
+            #             self.move_agent(i, next_pos)
+
+            ## TODO: 지나간 경로도 진화(2) ##
+            # Execute the moves
             for _ in range(num_moves):
                 if actions[i] == self.actions.NORTH:
                     next_pos = self.agents[i].north_pos()
                     next_cell = self.grid.get(*next_pos)
                     if next_cell is None or next_cell.can_overlap():
-                        self.move_agent(i, next_pos)
+                        self.move_agent(i, next_pos, agent_path_trees)
                 elif actions[i] == self.actions.SOUTH:
                     next_pos = self.agents[i].south_pos()
                     next_cell = self.grid.get(*next_pos)
                     if next_cell is None or next_cell.can_overlap():
-                        self.move_agent(i, next_pos)
+                        self.move_agent(i, next_pos, agent_path_trees)
                 elif actions[i] == self.actions.EAST:
                     next_pos = self.agents[i].east_pos()
                     next_cell = self.grid.get(*next_pos)
                     if next_cell is None or next_cell.can_overlap():
-                        self.move_agent(i, next_pos)
+                        self.move_agent(i, next_pos, agent_path_trees)
                 elif actions[i] == self.actions.WEST:
                     next_pos = self.agents[i].west_pos()
                     next_cell = self.grid.get(*next_pos)
                     if next_cell is None or next_cell.can_overlap():
-                        self.move_agent(i, next_pos)
+                        self.move_agent(i, next_pos, agent_path_trees)
                 elif actions[i] == self.actions.NORTH_EAST:
                     next_pos = self.agents[i].north_east_pos()
                     next_cell = self.grid.get(*next_pos)
                     if next_cell is None or next_cell.can_overlap():
-                        self.move_agent(i, next_pos)
+                        self.move_agent(i, next_pos, agent_path_trees)
                 elif actions[i] == self.actions.NORTH_WEST:
                     next_pos = self.agents[i].north_west_pos()
                     next_cell = self.grid.get(*next_pos)
                     if next_cell is None or next_cell.can_overlap():
-                        self.move_agent(i, next_pos)
+                        self.move_agent(i, next_pos, agent_path_trees)
                 elif actions[i] == self.actions.SOUTH_EAST:
                     next_pos = self.agents[i].south_east_pos()
                     next_cell = self.grid.get(*next_pos)
                     if next_cell is None or next_cell.can_overlap():
-                        self.move_agent(i, next_pos)
+                        self.move_agent(i, next_pos, agent_path_trees)
                 elif actions[i] == self.actions.SOUTH_WEST:
                     next_pos = self.agents[i].south_west_pos()
                     next_cell = self.grid.get(*next_pos)
                     if next_cell is None or next_cell.can_overlap():
-                        self.move_agent(i, next_pos)
+                        self.move_agent(i, next_pos, agent_path_trees)
+            ## END: 지나간 경로도 진화(2) ##
+
 
         # Count agents that actually moved (position changed)
         num_agents_moved = 0
@@ -1070,14 +1179,27 @@ class WildfireEnv(MultiGridEnv):
             if c.state == 1:
                 # Calculate total efficiency (alpha) of all agents on this tree
                 total_efficiency = 0.0
+
+                # 도착 지점
                 if c.agent_above:
                     for a in self.agents:
                         if a.pos[0] == c.pos[0] and a.pos[1] == c.pos[1]:
                             total_efficiency += getattr(a, 'efficiency', 1.0)
 
+                # 중간 지점
+                for agent_idx, path_trees in agent_path_trees.items():
+                    for path_tree in path_trees:
+                        if c.pos == path_tree.pos:
+                            agent_eff = getattr(self.agents[agent_idx], 'efficiency', 1.0)
+                            total_efficiency += agent_eff
+                            # DEBUG: Log path evolution effect
+                            if hasattr(self, '_debug_path_evolution'):
+                                print(f"[PATH EVOLUTION] Tree at {c.pos} (state={c.state}) - Agent {agent_idx} efficiency={agent_eff}, total_eff={total_efficiency}")
+                        
+
                 # Calculate probabilities
                 # P(on fire -> healthy) = min(alpha * delta_beta, beta)
-                p_healthy = min(total_efficiency * self.delta_beta, self.beta) if c.agent_above else 0.0
+                p_healthy = min(total_efficiency * self.delta_beta, self.beta) if total_efficiency > 0 else 0.0
                 # P(on fire -> burnt) = 1 - beta
                 p_burnt = 1 - self.beta
                 # P(on fire -> on fire) = beta - p_healthy (remaining probability)
@@ -1100,6 +1222,28 @@ class WildfireEnv(MultiGridEnv):
                     if self.log_selfish_region_metrics and c.region != "common":
                         self.selfish_region_trees_on_fire[int(c.region)] -= 1
                 # else: on fire -> on fire (remains burning)
+
+        # ## TODO: 지나간 경로도 진화(3) ##
+        # # 에이전트가 경로 중에 지나간 trees 중 on fire인 경우, 도착점 tree와 마찬가지로 진화 확률 적용
+        # for agent_idx, path_trees in agent_path_trees.items():
+        #     agent_efficiency = getattr(self.agents[agent_idx], 'efficiency', 1.0)
+        #     for path_tree in path_trees:
+        #         if path_tree.state == 1:  # on fire 상태
+        #             p_healthy = min(agent_efficiency * self.delta_beta, self.beta)
+        #             p_burnt = 1 - self.beta
+        #             rand = np.random.rand()
+
+        #              # on fire -> burnt
+        #              if rand < p_burnt:
+        #                 if path_tree not in trees_to_burnt_state:
+        #                     trees_to_burnt_state.append(path_tree)
+        #                     self.burnt_trees += 1
+        #                     self.trees_on_fire -= 1
+        #                     if self.log_selfish_region_metrics and path_tree.region != "common":
+        #                         self.selfish_region_burnt_trees[int(path_tree.region)] += 1
+        #                         self.selfish_region_trees_on_fire[int(path_tree.region)] -= 1
+        # ## END: 지나간 경로도 진화(3) ##
+
 
         # 3) Apply updates to grid/helper_grid after loop
         for c in trees_to_fire_state:
@@ -1138,12 +1282,26 @@ class WildfireEnv(MultiGridEnv):
             # 5) 보상 계산을 위한 상태 수집  ---------------------------------------------
             # (a) 크레딧 할당: 어떤 에이전트가 불을 껐는가?
             extinguished_by_agent = np.zeros(self.num_agents, dtype=np.int32)
+
+            # 이미 카운트된 tree들을 추적하여 중복 방지
+            counted_trees = set()
+
             for c in trees_to_healthy_state:
                 # 같은 좌표에 있는 에이전트를 찾아 1점 부여
                 for a in self.agents:
                     if (a.pos[0] == c.pos[0]) and (a.pos[1] == c.pos[1]):
                         extinguished_by_agent[a.index] += 1
+                        counted_trees.add(id(c))  # tree object의 고유 ID로 추적
                         # break  # 단일 에이전트 겹침 가정
+            
+            ## TODO: 지나간 경로도 진화(5) ##
+            # (a-1) 경로상 진화된 trees에 대한 크레딧 할당 (도착점과 중복되지 않도록)
+            for agent_idx, path_trees in agent_path_trees.items():
+                for path_tree in path_trees:
+                    if path_tree in trees_to_healthy_state and id(path_tree) not in counted_trees:
+                        extinguished_by_agent[agent_idx] += 1
+                        counted_trees.add(id(path_tree))
+            ## END: 지나간 경로도 진화(5) ##
 
             new_fire_total = len(trees_to_fire_state)
 
@@ -1169,7 +1327,16 @@ class WildfireEnv(MultiGridEnv):
                         if (a.pos[0] == c.pos[0]) and (a.pos[1] == c.pos[1]):
                             extinguished_here = 1
                             break
+
+                    ## TODO: 지나간 경로도 진화(6) ##
+                    # 경로상 진화된 tree 확인 
+                    if extinguished_here == 0:
+                        for path_tree in agent_path_trees[a.index]:
+                            if path_tree in trees_to_healthy_state:
+                                extinguished_here = 1
+                                break
                     agent_tree_extinguished[a.index] = extinguished_here
+                    ## END: 지나간 경로도 진화(6) ##
 
                 # agent_on_fire_tree: 각 에이전트가 불타는 나무 위에 있는지 (0 or 1)
                 agent_on_fire_tree = {}
@@ -1186,6 +1353,7 @@ class WildfireEnv(MultiGridEnv):
                 rewards = self._compute_shaped_rewards(
                     trees_to_fire_state=trees_to_fire_state,
                     trees_to_burnt_state=trees_to_burnt_state,
+                    trees_to_healthy_state=trees_to_healthy_state,
                     trees_extinguished_this_step=trees_extinguished_this_step,
                     new_fire_total=new_fire_total,
                     trees_preserved=trees_preserved,
@@ -1255,6 +1423,7 @@ class WildfireEnv(MultiGridEnv):
         self,
         trees_to_fire_state,
         trees_to_burnt_state,
+        trees_to_healthy_state,
         trees_extinguished_this_step,
         new_fire_total,
         trees_preserved,
@@ -1292,11 +1461,23 @@ class WildfireEnv(MultiGridEnv):
         rewards : dict
             각 에이전트의 보상 {agent_id_str: reward}
         """
+        # if self.reward_shaping == "cooperative":
+        #     # cooperative reward: 모든 에이전트가 같은 보상
+        #     reward_dict = self.reward_function(
+        #         trees_to_fire_state=trees_to_fire_state,
+        #         trees_extinguished_by_agents=trees_extinguished_this_step,
+        #         num_agents=self.num_agents,
+        #         **self.reward_config
+        #     )
+        #     # 반환된 dict의 키를 문자열로 변환
+        #     return {f"{k}": v for k, v in reward_dict.items()}
+
         if self.reward_shaping == "cooperative":
             # cooperative reward: 모든 에이전트가 같은 보상
             reward_dict = self.reward_function(
                 trees_to_fire_state=trees_to_fire_state,
-                trees_extinguished_by_agents=trees_extinguished_this_step,
+                trees_to_burnt_state=trees_to_burnt_state,
+                trees_to_healthy_state=trees_to_healthy_state,
                 num_agents=self.num_agents,
                 **self.reward_config
             )

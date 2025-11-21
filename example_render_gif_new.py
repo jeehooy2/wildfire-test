@@ -77,14 +77,14 @@ def main():
     # Crew: 느리고 낮은 효율 (white)
     num_helicopters = 1
     num_trucks = 1
-    num_crews = 1
+    num_crews = 0
     total_agents = num_helicopters + num_trucks + num_crews
 
     # 에이전트 시작 위치 (helicopter, truck, crew 순서)
     agent_start_positions = (
         (1, 1),   # Helicopter 시작 위치
         (15, 1),  # Truck 시작 위치
-        (8, 15),  # Crew 시작 위치
+        # (8, 15),  # Crew 시작 위치
     )
 
     env = gym.make("wildfire-v0",
@@ -141,7 +141,15 @@ def main():
         action = env.action_space.sample()
 
         # 환경 스텝 실행
-        observation, reward, terminated, truncated, info = env.step(action)
+        result = env.step(action)
+        if len(result) == 5:
+            # Gym 0.26+ API
+            observation, reward, terminated, truncated, info = result
+        else:
+            # Gym 0.21 이하 API
+            observation, reward, done, info = result
+            terminated = done
+            truncated = False
 
         # 프레임 렌더링 및 저장
         frame = env.render()

@@ -307,14 +307,14 @@ def print_summary(df, exp_name):
 def main():
     parser = argparse.ArgumentParser(description='Visualize MAPPO training results')
     parser.add_argument('--exp-path', type=str, required=True,
-                       help='Experiment folder name in experiments/mappo/ (e.g., run13_fixed)')
+                       help='Experiment folder name in experiments/maa2c/ (e.g., run13_fixed)')
     parser.add_argument('--plot-type', type=str, default='all',
                        choices=['all', 'reward', 'policy_loss', 'value_loss', 'timesteps', 'policy_rewards', 'dashboard'],
                        help='Type of plot to generate')
     args = parser.parse_args()
 
     # 경로 설정
-    mappo_dir = Path(__file__).parent / "experiments" / "mappo"
+    mappo_dir = Path(__file__).parent / "experiments" / "maa2c"
     exp_dir = mappo_dir / args.exp_path
     save_dir = Path(__file__).parent / "training_progress" / args.exp_path
 
