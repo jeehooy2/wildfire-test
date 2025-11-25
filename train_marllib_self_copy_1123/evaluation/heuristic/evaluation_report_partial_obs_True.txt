@@ -1,0 +1,89 @@
+================================================================================
+Heuristic Policies - Wildfire Suppression Task Evaluation Report
+================================================================================
+
+Environment Configuration:
+  size: 22
+  num_agents: 6
+  max_steps: 300
+  initial_fire_size: 3
+  num_helicopters: 2
+  num_trucks: 4
+  num_crews: 0
+  agent_start_positions: ((18, 1), (20, 3), (19, 1), (20, 1), (20, 2), (19, 2))
+  alpha: 0.05
+  beta: 0.9
+  delta_beta: 0.54
+  partial_obs: True
+  agent_view_size: 10
+  cooperative_reward: False
+  selfishness_weight: 0.2
+  reward_shaping: individual
+  reward_shaping_config: None
+  render_mode: rgb_array
+
+================================================================================
+Nearest Fire Greedy Policy Results
+================================================================================
+
+Healthy Trees Ratio (%):
+  Mean: 48.60%
+  Std:  3.68%
+  Min:  44.92%
+  Max:  52.28%
+
+Burnt Trees Ratio (%) - Damage Area:
+  Mean: 51.40%
+  Std:  3.68%
+  Min:  47.72%
+  Max:  55.08%
+
+Episode Length (steps):
+  Mean: 128.0
+  Std:  11.0
+  Min:  117.0
+  Max:  139.0
+
+Per-Episode Details:
+--------------------------------------------------------------------------------
+Episode 1 (seed=42):
+  Healthy: 44.92%
+  Burnt:   55.08%
+  Length:  117 steps
+Episode 2 (seed=43):
+  Healthy: 52.28%
+  Burnt:   47.72%
+  Length:  139 steps
+
+================================================================================
+Random Policy Results
+================================================================================
+
+Healthy Trees Ratio (%):
+  Mean: 14.34%
+  Std:  1.90%
+  Min:  12.44%
+  Max:  16.24%
+
+Burnt Trees Ratio (%) - Damage Area:
+  Mean: 85.66%
+  Std:  1.90%
+  Min:  83.76%
+  Max:  87.56%
+
+Episode Length (steps):
+  Mean: 147.5
+  Std:  10.5
+  Min:  137.0
+  Max:  158.0
+
+Per-Episode Details:
+--------------------------------------------------------------------------------
+Episode 1 (seed=42):
+  Healthy: 16.24%
+  Burnt:   83.76%
+  Length:  158 steps
+Episode 2 (seed=43):
+  Healthy: 12.44%
+  Burnt:   87.56%
+  Length:  137 steps

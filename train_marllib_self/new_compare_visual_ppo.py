@@ -39,13 +39,14 @@ import re
 from pathlib import Path
 from train_marllib_self.environment import ENV_CONFIG
 from wildfire_environment.envs import WildfireEnv
+from wildfire_environment.core.constants import TILE_PIXELS
 from PIL import Image, ImageDraw, ImageFont
 
 
 # ============================================================================
 # [Weight 구조 분석]
 # ============================================================================
-def analyze_weight_structure(marllib_weights):
+def analyze_weight_structure(marllib_weights, is_partial_obs=False):
     """
     Checkpoint의 weight 구조를 분석하여 network 구조를 파악
 
@@ -53,6 +54,8 @@ def analyze_weight_structure(marllib_weights):
     ----------
     marllib_weights : dict
         MARLlib checkpoint에서 추출한 가중치 딕셔너리
+    is_partial_obs : bool, optional
+        환경 설정에서의 partial observation 여부, by default False
 
     Returns
     -------
@@ -70,7 +73,7 @@ def analyze_weight_structure(marllib_weights):
         'input_dim': None,
         'hidden_dim': None,
         'output_dim': None,
-        'is_partial_obs': False,
+        'is_partial_obs': is_partial_obs,
         'encoder_layers': [],
     }
 
@@ -537,6 +540,22 @@ def run_episode_and_render(env, policy_networks, policy_mapping_fn, seed,
 
     # 초기 프레임
     frame = env.render(mode='rgb_array')
+
+    # 각 에이전트의 활동 시간 게이지 추가
+    for agent in env.agents:
+        frame = render_activity_gauge(frame, agent)
+
+    # 각 에이전트의 물 게이지 추가
+    for agent in env.agents:
+        frame = render_water_gauge(frame, agent)
+
+    # 각 에이전트의 급수원 마커 추가
+    for agent in env.agents:
+        frame = render_supply_source_marker(frame, agent)
+
+    # 에이전트 상태 패널 추가
+    frame = render_agent_status_panel(frame, env.agents, step)
+
     frames.append(frame)
 
     while not done and step < max_steps:
@@ -584,6 +603,22 @@ def run_episode_and_render(env, policy_networks, policy_mapping_fn, seed,
 
         # 프레임 저장
         frame = env.render(mode='rgb_array')
+
+        # 각 에이전트의 활동 시간 게이지 추가
+        for agent in env.agents:
+            frame = render_activity_gauge(frame, agent)
+
+        # 각 에이전트의 물 게이지 추가
+        for agent in env.agents:
+            frame = render_water_gauge(frame, agent)
+
+        # 각 에이전트의 급수원 마커 추가
+        for agent in env.agents:
+            frame = render_supply_source_marker(frame, agent)
+
+        # 에이전트 상태 패널 추가
+        frame = render_agent_status_panel(frame, env.agents, step)
+
         frames.append(frame)
 
         step += 1
@@ -657,6 +692,215 @@ def combine_frames_side_by_side(frames1, frames2, label1="Trained", label2="Rand
         combined_frames.append(np.array(combined))
 
     return combined_frames
+
+
+def render_activity_gauge(frame, agent, tile_size=TILE_PIXELS):
+    """
+    에이전트의 활동 시간 게이지를 에이전트 위쪽에 렌더링
+
+    Parameters
+    ----------
+    frame : numpy array
+        RGB 이미지 배열
+    agent : Agent
+        에이전트 객체
+    tile_size : int
+        타일 크기 (픽셀)
+
+    Returns
+    -------
+    numpy array
+        게이지가 추가된 이미지 배열
+    """
+    if not hasattr(agent, 'max_active_time') or agent.max_active_time == 0:
+        return frame
+
+    # 활동 시간 비율
+    fill_ratio = agent.active_time_remaining / agent.max_active_time
+
+    # 게이지 위치 (에이전트 위쪽 2픽셀)
+    pos = agent.pos
+    gauge_width = int(tile_size * 0.8)
+    gauge_height = 3
+    gauge_x = pos[0] * tile_size + int(tile_size * 0.1)
+    gauge_y = pos[1] * tile_size + 2
+
+    # 게이지 배경 (진회색)
+    frame[gauge_y:gauge_y+gauge_height, gauge_x:gauge_x+gauge_width] = [50, 50, 50]
+
+    # 게이지 채우기 (시안색)
+    fill_width = int(gauge_width * fill_ratio)
+    if fill_width > 0:
+        frame[gauge_y:gauge_y+gauge_height, gauge_x:gauge_x+fill_width] = [0, 255, 255]
+
+    return frame
+
+
+def render_water_gauge(frame, agent, tile_size=TILE_PIXELS):
+    """
+    에이전트의 물/억제제 게이지를 에이전트 아래쪽에 렌더링
+
+    Parameters
+    ----------
+    frame : numpy array
+        RGB 이미지 배열
+    agent : Agent
+        에이전트 객체
+    tile_size : int
+        타일 크기 (픽셀)
+
+    Returns
+    -------
+    numpy array
+        게이지가 추가된 이미지 배열
+    """
+    if not hasattr(agent, 'max_water') or agent.max_water == 0:
+        return frame
+
+    # 물 양 비율
+    fill_ratio = agent.water_remaining / agent.max_water
+
+    # 게이지 위치 (에이전트 아래쪽 6픽셀)
+    pos = agent.pos
+    gauge_width = int(tile_size * 0.8)
+    gauge_height = 3
+    gauge_x = pos[0] * tile_size + int(tile_size * 0.1)
+    gauge_y = pos[1] * tile_size + 6
+
+    # 게이지 배경 (진회색)
+    frame[gauge_y:gauge_y+gauge_height, gauge_x:gauge_x+gauge_width] = [50, 50, 50]
+
+    # 게이지 채우기 (파란색)
+    fill_width = int(gauge_width * fill_ratio)
+    if fill_width > 0:
+        frame[gauge_y:gauge_y+gauge_height, gauge_x:gauge_x+fill_width] = [0, 100, 255]
+
+    return frame
+
+
+def render_supply_source_marker(frame, agent, tile_size=TILE_PIXELS):
+    """
+    급수원(홈 위치)을 프레임에 파란색 상자로 표시
+
+    Parameters
+    ----------
+    frame : numpy array
+        RGB 이미지 배열
+    agent : Agent
+        에이전트 객체
+    tile_size : int
+        타일 크기 (픽셀)
+
+    Returns
+    -------
+    numpy array
+        급수원 마커가 추가된 이미지 배열
+    """
+    if not hasattr(agent, 'home_pos'):
+        return frame
+
+    home_pos = agent.home_pos
+    # 급수원 타일의 시작점
+    home_x = home_pos[0] * tile_size
+    home_y = home_pos[1] * tile_size
+
+    # 급수원을 파란색 상자로 표시
+    box_thickness = 2
+
+    # 상단 테두리
+    frame[max(0, home_y):min(frame.shape[0], home_y+box_thickness),
+          max(0, home_x):min(frame.shape[1], home_x+tile_size)] = [0, 0, 255]
+    # 하단 테두리
+    frame[max(0, home_y+tile_size-box_thickness):min(frame.shape[0], home_y+tile_size),
+          max(0, home_x):min(frame.shape[1], home_x+tile_size)] = [0, 0, 255]
+    # 좌측 테두리
+    frame[max(0, home_y):min(frame.shape[0], home_y+tile_size),
+          max(0, home_x):min(frame.shape[1], home_x+box_thickness)] = [0, 0, 255]
+    # 우측 테두리
+    frame[max(0, home_y):min(frame.shape[0], home_y+tile_size),
+          max(0, home_x+tile_size-box_thickness):min(frame.shape[1], home_x+tile_size)] = [0, 0, 255]
+
+    return frame
+
+
+def render_agent_status_panel(frame, agents, step):
+    """
+    에이전트들의 상태를 화면 우측에 패널로 표시
+
+    Parameters
+    ----------
+    frame : numpy array
+        RGB 이미지 배열
+    agents : list
+        에이전트 리스트
+    step : int
+        현재 스텝
+
+    Returns
+    -------
+    numpy array
+        상태 패널이 추가된 이미지 배열
+    """
+    img = Image.fromarray(frame)
+    draw = ImageDraw.Draw(img)
+
+    try:
+        font = ImageFont.load_default()
+    except:
+        font = None
+
+    # 우측 패널 위치
+    panel_width = 200
+    panel_height = frame.shape[0]
+    panel_x = frame.shape[1] - panel_width
+    panel_y = 0
+
+    # 패널 배경 (반투명 검은색 효과를 위해 직접 처리)
+    # 상태 텍스트 추가
+    y_offset = 10
+
+    # 스텝 표시
+    draw.text((panel_x + 5, y_offset), f"Step: {step}", fill=(255, 255, 255), font=font)
+    y_offset += 15
+
+    # 각 에이전트 상태
+    state_names = {0: "ACTIVE", 1: "RETURNING", 2: "RECHARGING"}
+
+    for agent_idx, agent in enumerate(agents):
+        # 에이전트 번호
+        agent_text = f"Agent {agent_idx}:"
+        draw.text((panel_x + 5, y_offset), agent_text, fill=(255, 255, 255), font=font)
+        y_offset += 12
+
+        # 상태
+        state = state_names.get(agent.state, "UNKNOWN")
+        state_color = (0, 255, 0) if agent.state == 0 else (255, 255, 0) if agent.state == 1 else (255, 0, 0)
+        draw.text((panel_x + 10, y_offset), f"State: {state}", fill=state_color, font=font)
+        y_offset += 12
+
+        # 활동 시간 (있을 경우)
+        if hasattr(agent, 'max_active_time'):
+            time_percent = int(100 * agent.active_time_remaining / agent.max_active_time)
+            draw.text((panel_x + 10, y_offset), f"Active: {agent.active_time_remaining}/{agent.max_active_time}",
+                     fill=(200, 200, 200), font=font)
+            y_offset += 12
+
+        # 재충전 시간 (RECHARGING 상태일 때만)
+        if agent.state == 2 and hasattr(agent, 'recharge_time'):
+            recharge_percent = int(100 * (agent.recharge_time - agent.recharge_time_remaining) / agent.recharge_time)
+            draw.text((panel_x + 10, y_offset), f"Recharge: {agent.recharge_time_remaining}/{agent.recharge_time}",
+                     fill=(255, 165, 0), font=font)
+            y_offset += 12
+
+        # 급수원 위치
+        if hasattr(agent, 'home_pos'):
+            draw.text((panel_x + 10, y_offset), f"Home: {agent.home_pos}",
+                     fill=(0, 255, 0), font=font)
+            y_offset += 12
+
+        y_offset += 5  # 에이전트 사이의 간격
+
+    return np.array(img)
 
 
 def save_as_gif(frames, filename, fps=10):
@@ -822,7 +1066,7 @@ def main(checkpoint_path, num_episodes=3, seed=42, output_dir=None):
             first_weights = policies_weights[first_policy_name]
 
             print(f"\n  분석 중인 정책: {first_policy_name}")
-            analysis = analyze_weight_structure(first_weights)
+            analysis = analyze_weight_structure(first_weights, is_partial_obs=is_partial_obs)
             print_weight_analysis(analysis)
 
             # 적응형 network 생성

@@ -91,6 +91,11 @@ class WildfireRLlibEnv(MultiAgentEnv):
             import ast
             clean_config['agent_start_positions'] = ast.literal_eval(clean_config['agent_start_positions'])
 
+        # 2-1. 문자열로 전달된 agent_supply_positions를 튜플로 변환
+        if 'agent_supply_positions' in clean_config and isinstance(clean_config['agent_supply_positions'], str):
+            import ast
+            clean_config['agent_supply_positions'] = ast.literal_eval(clean_config['agent_supply_positions'])
+
         # 3. 문자열 "None"을 실제 None으로 변환
         if 'reward_shaping_config' in clean_config and clean_config['reward_shaping_config'] == 'None':
             clean_config['reward_shaping_config'] = None

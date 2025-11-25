@@ -179,15 +179,15 @@ if __name__ == '__main__':
         env,
         model,
         stop={
-            'episode_reward_mean': 50,
+            'episode_reward_mean': 1000,
             'timesteps_total': 5000000,
             # 'training_iteration': 100
         },
         local_mode=False, # GPU
         num_gpus=1,
-        num_workers=2,
+        num_workers=4,
         share_policy='group', # PPO는 모든 에이전트가 같은 정책 사용
-        checkpoint_freq=25, 
+        checkpoint_freq=50, 
         # verbose=2,
         local_dir=str(output_dir),  # fit() 메서드에 직접 전달
         evaluation_interval=None

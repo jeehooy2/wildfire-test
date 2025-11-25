@@ -1,7 +1,14 @@
 """
-휴리스틱 기반 산불 진화 정책: 가장 가까운 활화목으로 이동
+휴리스틱 기반 산불 진화 정책: 가장 가까운 활화목으로 이동 + 급수원 반환 메커니즘
 
-학습된 MAPPO, PPO 등의 정책과 비교할 휴리스틱 정책입니다.
+Phase 3/4 업데이트: wildfire.py의 급수원 반환 로직을 반영한 휴리스틱 정책입니다.
+
+에이전트 상태별 행동:
+1. RECHARGING 상태: 제자리 유지 (STILL)
+2. RETURNING 상태: 급수원(home_pos)으로 이동
+3. ACTIVE 상태: 가장 가까운 활화목으로 이동 (기존 로직)
+
+관찰 공간:
 - partial_obs=False인 경우: 전체 그리드에서 각 에이전트와 가장 가까운 불타는 나무로 이동
 - partial_obs=True인 경우: 에이전트 중심으로 partial_obs_size x partial_obs_size 관찰 공간에서 가장 가까운 불타는 나무로 이동
   (agent.py Line 112: self.partial_obs_size = 5)
@@ -40,7 +47,8 @@ if project_root not in sys.path:
 import numpy as np
 from train_marllib_self.environment import ENV_CONFIG
 from wildfire_environment.envs import WildfireEnv
-from PIL import Image
+from wildfire_environment.core.constants import TILE_PIXELS
+from PIL import Image, ImageDraw, ImageFont
 
 
 # ============================================================================
@@ -50,6 +58,11 @@ from PIL import Image
 def select_heuristic_action(env, agent_id, obs, obs_dict, env_config, partial_obs):
     """
     휴리스틱 정책으로 액션 선택
+
+    Phase 3/4 업데이트 (급수원 반환 메커니즘 반영):
+    - RECHARGING 상태: STILL (제자리 유지)
+    - RETURNING 상태: 급수원(home_pos)으로 이동
+    - ACTIVE 상태: 가장 가까운 활화목으로 이동 (기존 로직)
 
     partial_obs=False: 전체 그리드에서 가장 가까운 활화목으로 이동
     partial_obs=True: 에이전트 중심으로 partial_obs_size x partial_obs_size 관찰 공간 내에서 가장 가까운 활화목으로 이동
@@ -77,18 +90,32 @@ def select_heuristic_action(env, agent_id, obs, obs_dict, env_config, partial_ob
     Returns
     -------
     int
-        선택한 액션 (0: UP, 1: RIGHT, 2: DOWN, 3: LEFT, 4: STAY)
+        선택한 액션 (0: STILL, 1: NORTH, 2: NORTH_EAST, ..., 8: NORTH_WEST)
     """
     # 에이전트 위치 찾기
     try:
         agent_idx = int(agent_id)
         if agent_idx >= len(env.agents):
-            return 4  # STAY
+            return 0  # STILL
     except (ValueError, TypeError):
-        return 4
+        return 0
 
     agent = env.agents[agent_idx]
-    agent_pos = agent.pos  # (x, y)
+    agent_pos = tuple(agent.pos) if isinstance(agent.pos, np.ndarray) else agent.pos
+
+    # Phase 3/4: 에이전트 상태에 따른 휴리스틱 선택
+    from wildfire_environment.core.agent import AgentState
+
+    # RECHARGING 상태: 제자리 유지
+    if hasattr(agent, 'state') and agent.state == AgentState.RECHARGING:
+        return 0  # STILL
+
+    # RETURNING 상태: 급수원으로 이동
+    if hasattr(agent, 'state') and agent.state == AgentState.RETURNING:
+        if hasattr(agent, 'home_pos') and agent.home_pos is not None:
+            return _move_towards(agent_pos, agent.home_pos)
+        else:
+            return 0  # STILL
 
     # 활화목 찾기
     grid = env.grid
@@ -121,7 +148,7 @@ def select_heuristic_action(env, agent_id, obs, obs_dict, env_config, partial_ob
 
     # 활화목이 없으면 STAY
     if not fire_positions:
-        return 4
+        return 0
 
     # 가장 가까운 활화목 찾기
     min_dist = float('inf')
@@ -134,7 +161,7 @@ def select_heuristic_action(env, agent_id, obs, obs_dict, env_config, partial_ob
             nearest_fire = fire_pos
 
     if nearest_fire is None:
-        return 4
+        return 0
 
     # 가장 가까운 활화목 방향으로 이동
     return _move_towards(agent_pos, nearest_fire)
@@ -143,6 +170,8 @@ def select_heuristic_action(env, agent_id, obs, obs_dict, env_config, partial_ob
 def _move_towards(from_pos, to_pos):
     """
     from_pos에서 to_pos 방향으로 한 칸 이동하는 액션 반환
+
+    Phase 3/4 업데이트: 급수원 또는 활화목으로 이동할 때 사용
 
     WildfireActions 매핑:
     - 0: STILL
@@ -247,6 +276,12 @@ def run_heuristic_episode(env, env_config, seed, max_steps=300, render=False):
     # 초기 프레임
     if render:
         frame = env.render(mode='rgb_array')
+        # Phase 3/4: 시각화 정보 추가
+        for agent in env.agents:
+            frame = render_activity_gauge(frame, agent)
+            frame = render_water_gauge(frame, agent)
+            frame = render_supply_source_marker(frame, agent)
+        frame = render_agent_status_panel(frame, env.agents, step)
         frames.append(frame)
 
     while not done and step < max_steps:
@@ -284,6 +319,12 @@ def run_heuristic_episode(env, env_config, seed, max_steps=300, render=False):
         # 프레임 저장
         if render:
             frame = env.render(mode='rgb_array')
+            # Phase 3/4: 시각화 정보 추가
+            for agent in env.agents:
+                frame = render_activity_gauge(frame, agent)
+                frame = render_water_gauge(frame, agent)
+                frame = render_supply_source_marker(frame, agent)
+            frame = render_agent_status_panel(frame, env.agents, step)
             frames.append(frame)
 
         step += 1
@@ -292,6 +333,228 @@ def run_heuristic_episode(env, env_config, seed, max_steps=300, render=False):
         return episode_reward, step, episode_data, frames
     else:
         return episode_reward, step, episode_data
+
+
+# ============================================================================
+# [시각화 함수]
+# ============================================================================
+
+def render_activity_gauge(frame, agent, tile_size=TILE_PIXELS):
+    """
+    에이전트의 활동 시간 게이지를 에이전트 위쪽에 렌더링
+
+    Parameters
+    ----------
+    frame : numpy array
+        RGB 이미지 배열
+    agent : Agent
+        에이전트 객체
+    tile_size : int
+        타일 크기 (픽셀)
+
+    Returns
+    -------
+    numpy array
+        게이지가 추가된 이미지 배열
+    """
+    if not hasattr(agent, 'max_active_time') or agent.max_active_time == 0:
+        return frame
+
+    # 활동 시간 비율
+    fill_ratio = agent.active_time_remaining / agent.max_active_time
+
+    # 게이지 위치 (에이전트 위쪽 2픽셀)
+    pos = agent.pos
+    gauge_width = int(tile_size * 0.8)
+    gauge_height = 3
+    gauge_x = pos[0] * tile_size + int(tile_size * 0.1)
+    gauge_y = pos[1] * tile_size + 2
+
+    # 게이지 배경 (진회색)
+    frame[gauge_y:gauge_y+gauge_height, gauge_x:gauge_x+gauge_width] = [50, 50, 50]
+
+    # 게이지 채우기 (시안색)
+    fill_width = int(gauge_width * fill_ratio)
+    if fill_width > 0:
+        frame[gauge_y:gauge_y+gauge_height, gauge_x:gauge_x+fill_width] = [0, 255, 255]
+
+    return frame
+
+
+def render_water_gauge(frame, agent, tile_size=TILE_PIXELS):
+    """
+    에이전트의 물/억제제 게이지를 에이전트 아래쪽에 렌더링
+
+    Parameters
+    ----------
+    frame : numpy array
+        RGB 이미지 배열
+    agent : Agent
+        에이전트 객체
+    tile_size : int
+        타일 크기 (픽셀)
+
+    Returns
+    -------
+    numpy array
+        게이지가 추가된 이미지 배열
+    """
+    if not hasattr(agent, 'max_water') or agent.max_water == 0:
+        return frame
+
+    # 물 양 비율
+    fill_ratio = agent.water_remaining / agent.max_water
+
+    # 게이지 위치 (에이전트 아래쪽 6픽셀)
+    pos = agent.pos
+    gauge_width = int(tile_size * 0.8)
+    gauge_height = 3
+    gauge_x = pos[0] * tile_size + int(tile_size * 0.1)
+    gauge_y = pos[1] * tile_size + 6
+
+    # 게이지 배경 (진회색)
+    frame[gauge_y:gauge_y+gauge_height, gauge_x:gauge_x+gauge_width] = [50, 50, 50]
+
+    # 게이지 채우기 (시안색)
+    fill_width = int(gauge_width * fill_ratio)
+    if fill_width > 0:
+        frame[gauge_y:gauge_y+gauge_height, gauge_x:gauge_x+fill_width] = [0, 255, 255]
+
+    return frame
+
+
+def render_supply_source_marker(frame, agent, tile_size=TILE_PIXELS):
+    """
+    급수원(홈 위치)을 프레임에 표시
+
+    Parameters
+    ----------
+    frame : numpy array
+        RGB 이미지 배열
+    agent : Agent
+        에이전트 객체
+    tile_size : int
+        타일 크기 (픽셀)
+
+    Returns
+    -------
+    numpy array
+        급수원 마커가 추가된 이미지 배열
+    """
+    if not hasattr(agent, 'home_pos'):
+        return frame
+
+    home_pos = agent.home_pos
+    # 급수원 타일의 시작점
+    home_x = home_pos[0] * tile_size
+    home_y = home_pos[1] * tile_size
+
+    # 급수원을 파란색 상자로 표시
+    box_thickness = 2
+
+    # 상단 테두리
+    frame[max(0, home_y):min(frame.shape[0], home_y+box_thickness),
+          max(0, home_x):min(frame.shape[1], home_x+tile_size)] = [0, 0, 255]
+    # 하단 테두리
+    frame[max(0, home_y+tile_size-box_thickness):min(frame.shape[0], home_y+tile_size),
+          max(0, home_x):min(frame.shape[1], home_x+tile_size)] = [0, 0, 255]
+    # 좌측 테두리
+    frame[max(0, home_y):min(frame.shape[0], home_y+tile_size),
+          max(0, home_x):min(frame.shape[1], home_x+box_thickness)] = [0, 0, 255]
+    # 우측 테두리
+    frame[max(0, home_y):min(frame.shape[0], home_y+tile_size),
+          max(0, home_x+tile_size-box_thickness):min(frame.shape[1], home_x+tile_size)] = [0, 0, 255]
+
+    return frame
+
+
+def render_agent_status_panel(frame, agents, step):
+    """
+    에이전트들의 상태를 화면 우측에 패널로 표시
+
+    Parameters
+    ----------
+    frame : numpy array
+        RGB 이미지 배열
+    agents : list
+        에이전트 리스트
+    step : int
+        현재 스텝
+
+    Returns
+    -------
+    numpy array
+        상태 패널이 추가된 이미지 배열
+    """
+    img = Image.fromarray(frame)
+    draw = ImageDraw.Draw(img)
+
+    try:
+        font = ImageFont.load_default()
+    except:
+        font = None
+
+    # 우측 패널 위치
+    panel_width = 200
+    panel_height = frame.shape[0]
+    panel_x = frame.shape[1] - panel_width
+    panel_y = 0
+
+    # 패널 배경 (반투명 검은색 효과를 위해 직접 처리)
+    # 상태 텍스트 추가
+    y_offset = 10
+
+    # 스텝 표시
+    draw.text((panel_x + 5, y_offset), f"Step: {step}", fill=(255, 255, 255), font=font)
+    y_offset += 15
+
+    # 각 에이전트 상태
+    from wildfire_environment.core.agent import AgentState
+    state_names = {
+        AgentState.ACTIVE: "ACTIVE",
+        AgentState.RETURNING: "RETURNING",
+        AgentState.RECHARGING: "RECHARGING"
+    }
+
+    for agent_idx, agent in enumerate(agents):
+        # 에이전트 번호
+        agent_text = f"Agent {agent_idx}:"
+        draw.text((panel_x + 5, y_offset), agent_text, fill=(255, 255, 255), font=font)
+        y_offset += 12
+
+        # 상태
+        state = state_names.get(agent.state, "UNKNOWN")
+        state_color = (0, 255, 0) if agent.state == AgentState.ACTIVE else (255, 255, 0) if agent.state == AgentState.RETURNING else (255, 0, 0)
+        draw.text((panel_x + 10, y_offset), f"State: {state}", fill=state_color, font=font)
+        y_offset += 12
+
+        # 활동 시간 (있을 경우)
+        if hasattr(agent, 'max_active_time'):
+            draw.text((panel_x + 10, y_offset), f"Active: {agent.active_time_remaining}/{agent.max_active_time}",
+                     fill=(200, 200, 200), font=font)
+            y_offset += 12
+
+        # 물 게이지
+        if hasattr(agent, 'max_water'):
+            draw.text((panel_x + 10, y_offset), f"Water: {agent.water_remaining:.1f}/{agent.max_water}",
+                     fill=(100, 200, 255), font=font)
+            y_offset += 12
+
+        # 재충전 시간 (RECHARGING 상태일 때만)
+        if agent.state == AgentState.RECHARGING and hasattr(agent, 'recharge_time'):
+            draw.text((panel_x + 10, y_offset), f"Recharge: {agent.recharge_time_remaining}/{agent.recharge_time}",
+                     fill=(255, 165, 0), font=font)
+            y_offset += 12
+
+        # 급수원 위치
+        if hasattr(agent, 'home_pos'):
+            draw.text((panel_x + 10, y_offset), f"Home: {agent.home_pos}",
+                     fill=(0, 255, 0), font=font)
+            y_offset += 12
+
+        y_offset += 5  # 에이전트 사이의 간격
+
+    return np.array(img)
 
 
 # ============================================================================

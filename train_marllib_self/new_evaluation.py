@@ -8,7 +8,7 @@ Evaluation script for trained MARL models on wildfire suppression task
   3. 총 진화 시간 (에피소드 길이 in steps)
 
 실행 예시:
-ㅌ \\
+python train_marllib_self/new_evaluation.py \\
     --experiment train_marllib_self/experiments/mappo/run13_fixed \\
     --checkpoint 100 \\
     --episodes 10 \\

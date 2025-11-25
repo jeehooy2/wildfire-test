@@ -18,23 +18,20 @@ Fire Dynamics:
   - Delta beta (fire decay): 0.54
 
 Visualization Parameters:
-  - Number of episodes: 3
+  - Number of episodes: 2
   - Starting seed: 42
   - FPS: 10
 
 Results:
   Episode 1 (Seed 42):
-    Reward: -21.66
-    Length: 236
+    Reward: -3.38
+    Length: 99
   Episode 2 (Seed 43):
-    Reward: -18.41
-    Length: 123
-  Episode 3 (Seed 44):
-    Reward: -17.84
-    Length: 193
+    Reward: -3.11
+    Length: 133
 
 Summary:
-  Average Reward: -19.30 ± 1.68
-  Average Episode Length: 184.00 ± 46.57
-  Max Reward: -17.84
-  Min Reward: -21.66
+  Average Reward: -3.25 ± 0.14
+  Average Episode Length: 116.00 ± 17.00
+  Max Reward: -3.11
+  Min Reward: -3.38

@@ -52,6 +52,7 @@ env_args:
   num_agents: {ENV_CONFIG['num_agents']}
   max_steps: {ENV_CONFIG['max_steps']}
   initial_fire_size: {ENV_CONFIG['initial_fire_size']}
+  initial_fire_num: {ENV_CONFIG['initial_fire_num']}
   num_helicopters: {ENV_CONFIG['num_helicopters']}
   num_trucks: {ENV_CONFIG['num_trucks']}
   num_crews: {ENV_CONFIG['num_crews']}
@@ -144,13 +145,8 @@ if __name__ == '__main__':
     mappo = marl.algos.mappo(
         hyperparam_source="common",
         batch_episode=10,
-        # num_sgd_iter=10,  # SGD 반복 횟수 증가
         lr=0.0005,
-        # lr=0.0005,        # 학습률 조정
         clip_param=0.3
-        # algorithm_config={
-        #     "clip_param": 0.3  # <-- We need algorithm_config for this
-        # }
     )
 
     # # 환경에서 에이전트 타입별 개수 추출
@@ -204,27 +200,15 @@ if __name__ == '__main__':
         env,
         model,
         stop={
-            'episode_reward_mean': 50,
+            'episode_reward_mean': 1000,
             'timesteps_total': 5000000,
             # 'training_iteration': 100
         },
         local_mode=False, # GPU
         num_gpus=1,
-        num_workers=2,
+        num_workers=4,
         share_policy='group', #all, group, individual
-        # multi_agent_config={
-        #     'policies': {
-        #         'helicopter_policy': (None, obs_space, action_space, {}),
-        #         'truck_policy': (None, obs_space, action_space, {}),
-        #         'crew_policy': (None, obs_space, action_space, {}),
-        #     },
-        #     'policy_mapping_fn': lambda agent_id, *args, **kwargs: (
-        #         "helicopter_policy" if agent_id < num_helicopters
-        #         else "truck_policy" if agent_id < num_helicopters + num_trucks
-        #         else "crew_policy"
-        #     )
-        # },
-        checkpoint_freq=25,
+        checkpoint_freq=50,
         # verbose=2,
         local_dir=str(output_dir),  # fit() 메서드에 직접 전달
         evaluation_interval=None

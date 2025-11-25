@@ -7,7 +7,7 @@ from gym.spaces import Box, Dict, Discrete
 import numpy as np
 from wildfire_environment.multigrid import MultiGridEnv
 from wildfire_environment.core.world import WildfireWorld
-from wildfire_environment.core.agent import WildfireActions, Agent, Helicopter, Truck, Crew
+from wildfire_environment.core.agent import WildfireActions, Agent, Helicopter, Truck, Crew, AgentState
 from wildfire_environment.core.object import Tree
 from wildfire_environment.core.grid import Grid
 from wildfire_environment.core.constants import (
@@ -34,10 +34,12 @@ class WildfireEnv(MultiGridEnv):
         size=17,
         num_agents=2,
         agent_start_positions=((1, 1), (15, 15)),
+        agent_supply_positions=None,
         agent_colors=("red", "blue", "yellow"),
         agent_groups=None,
         agent_view_size=10,
         initial_fire_size=1,
+        initial_fire_num=1,
         max_steps=100,
         partial_obs=False,
         actions_set=WildfireActions,
@@ -72,6 +74,8 @@ class WildfireEnv(MultiGridEnv):
             number of UAV agents, by default 2
         agent_start_positions : tuple[tuple[int,int]], optional
             tuple of tuples containing the start positions of the agents, in order of agent index. By default ((1, 1), (15, 15))
+        agent_supply_positions : tuple[tuple[int,int]], optional
+            tuple of tuples containing the supply source (home) positions of the agents, in order of agent index. If None, defaults to agent_start_positions. By default None
         agent_colors : tuple[str,str], optional
             tuple of strings of color names of all agents (or groups if agents are grouped) in order of increasing index. All agents in a group have the same color. The strings should be keys in the COLORS dictionary in constants.py. Only applicable if cooperative_reward is False. Fully cooperative agents have light_blue color by default. By default self-interested agents have red and blue colors
         agent_groups : tuple[tuple], optional
@@ -80,6 +84,8 @@ class WildfireEnv(MultiGridEnv):
             side of the square region visible to an agent with partial observability, by default 10. Only applicable if partial_obs is True
         initial_fire_size : int, optional
             side of the square shaped initial fire region, by default 1
+        initial_fire_num : int, optional
+            number of initial fire regions, by default 1
         max_steps : int, optional
             maximum number of steps in an episode, by default 100
         partial_obs : bool, optional
@@ -105,7 +111,7 @@ class WildfireEnv(MultiGridEnv):
         selfish_region_ymax : list, optional
             list containing y-coordinates of the bottom boundaries of the regions of selfish interest for the agents (or groups if the agents are grouped. All agents in a group have same region of selfish interest). Regions of selfish interest are rectangular. List elements are in order of agent (or group) indices. Only applicable if cooperative_reward is False. By default None.
         reward_shaping : str, optional
-            reward shaping function to use. Options: None, "cooperative", "ramadan", "individual". By default None (uses base rewards from environment).
+            reward shaping function to use. Options: None, "cooperative", "ramadan", "individual", "individual2", "cooperative2". By default None (uses base rewards from environment).
         reward_shaping_config : dict, optional
             configuration dictionary for reward shaping function. By default None (uses default config from reward_functions.py).
         num_helicopters : int, optional
@@ -120,6 +126,7 @@ class WildfireEnv(MultiGridEnv):
         self.delta_beta = delta_beta
         self.num_agents = num_agents
         self.agent_start_positions = agent_start_positions
+        self.agent_supply_positions = agent_supply_positions or agent_start_positions
         self.agent_colors = agent_colors
         self.agent_groups = agent_groups
         if agent_groups:
@@ -134,6 +141,7 @@ class WildfireEnv(MultiGridEnv):
         self.grid_size = size
         self.grid_size_without_walls = size - 2
         self.initial_fire_size = initial_fire_size
+        self.initial_fire_num = initial_fire_num
         self.burnt_trees = 0
         self.unburnt_trees = []
         self.trees_on_fire = 0
@@ -283,6 +291,8 @@ class WildfireEnv(MultiGridEnv):
             self.cumulative_extinguished = 0
             self.cumulative_actions = 0
             self.total_trees = (self.grid_size_without_walls) ** 2
+            # Track unique trees that have ever caught fire (to avoid double-counting)
+            self.trees_ever_on_fire = set()
         else:
             self.reward_function = None  # Use base rewards
 
@@ -401,45 +411,64 @@ class WildfireEnv(MultiGridEnv):
                             agent_start_pos.append((i, j))
 
         else:
-            # choose location of initial fire uniformly at random
-            if self.initial_fire_size % 2 == 0:
-                # for even sized initial fires, choose location of top left corner of fire region uniformly at random
-                top_left_corner = (
-                    self._rand_int(
-                        1,
-                        self.grid_size_without_walls - (self.initial_fire_size),
-                    ),
-                    self._rand_int(
-                        1,
-                        self.grid_size_without_walls - (self.initial_fire_size),
-                    ),
-                )
-                initial_fire = get_initial_fire_coordinates(
-                    *top_left_corner,
-                    self.grid_size,
-                    self.initial_fire_size,
-                )
-            else:
-                # for odd sized initial fires, choose location of center of fire region uniformly at random
-                fire_square_center = (
-                    self._rand_int(
-                        1 + ((self.initial_fire_size - 1) // 2),
-                        self.grid_size_without_walls
-                        - ((self.initial_fire_size - 1) // 2),
-                    ),
-                    self._rand_int(
-                        1 + ((self.initial_fire_size - 1) // 2),
-                        self.grid_size_without_walls
-                        - ((self.initial_fire_size - 1) // 2),
-                    ),
-                )
-                initial_fire = get_initial_fire_coordinates(
-                    *fire_square_center,
-                    self.grid_size,
-                    self.initial_fire_size,
-                )
+            # choose locations of initial fires uniformly at random
+            ## TODO: 다중 산불 시작##
+            # Use set to avoid duplicate coordinates when fire regions overlap
+            initial_fire_set = set()
+            ## TODO: 다중 산불 끝##
+
+            for _ in range(self.initial_fire_num):
+                if self.initial_fire_size % 2 == 0:
+                    # for even sized initial fires, choose location of top left corner of fire region uniformly at random
+                    top_left_corner = (
+                        self._rand_int(
+                            1,
+                            self.grid_size_without_walls - (self.initial_fire_size),
+                        ),
+                        self._rand_int(
+                            1,
+                            self.grid_size_without_walls - (self.initial_fire_size),
+                        ),
+                    )
+                    fire_coords = get_initial_fire_coordinates(
+                        *top_left_corner,
+                        self.grid_size,
+                        self.initial_fire_size,
+                    )
+                else:
+                    # for odd sized initial fires, choose location of center of fire region uniformly at random
+                    fire_square_center = (
+                        self._rand_int(
+                            1 + ((self.initial_fire_size - 1) // 2),
+                            self.grid_size_without_walls
+                            - ((self.initial_fire_size - 1) // 2),
+                        ),
+                        self._rand_int(
+                            1 + ((self.initial_fire_size - 1) // 2),
+                            self.grid_size_without_walls
+                            - ((self.initial_fire_size - 1) // 2),
+                        ),
+                    )
+                    fire_coords = get_initial_fire_coordinates(
+                        *fire_square_center,
+                        self.grid_size,
+                        self.initial_fire_size,
+                    )
+                ## TODO: 다중 산불 시작##
+                initial_fire_set.update(fire_coords)  # Add to set to avoid duplicates
+                ## TODO: 다중 산불 끝##
+
+            ## TODO: 다중 산불 시작##
+            initial_fire = list(initial_fire_set)  # Convert set back to list
+            ## TODO: 다중 산불 끝##
+
             # agent_start_pos is specified during environment initialization
             agent_start_pos = self.agent_start_positions
+
+        ## TODO: 다중 산불 시작##
+        # Store initial fire trees for later tracking
+        initial_fire_trees = []
+        ## TODO: 다중 산불 끝##
 
         for pos in initial_fire:
             region = "common"
@@ -460,15 +489,21 @@ class WildfireEnv(MultiGridEnv):
                             self.selfish_region_trees_on_fire[a.index] += 1
                             break
             # insert tree on fire in grid
+            fire_tree = Tree(self.world, STATE_TO_IDX_WILDFIRE["on fire"], region=region)
             self.put_obj(
-                Tree(self.world, STATE_TO_IDX_WILDFIRE["on fire"], region=region),
+                fire_tree,
                 int(pos[0]),
                 int(pos[1]),
             )
+            ## TODO: 다중 산불 시작##
+            initial_fire_trees.append(fire_tree)
+            ## TODO: 다중 산불 끝##
 
+        ## TODO: 다중 산불 시작##
         # update counts of trees on fire and healthy trees
-        self.trees_on_fire += self.initial_fire_size**2
+        self.trees_on_fire += len(initial_fire)
         num_healthy_trees = self.grid_size_without_walls**2 - len(initial_fire)
+        ## TODO: 다중 산불 끝##
 
         # insert healthy tree in grid
         for _ in range(num_healthy_trees):
@@ -494,15 +529,38 @@ class WildfireEnv(MultiGridEnv):
         # helper grid is a work around for grid being unable to store multiple objects at a single cell. It does not contain agents
         self.helper_grid = self.grid.copy()
 
+        # ## TODO: 다중 산불 시작##
+        # # Ensure all empty cells have trees (fix for multiple initial fires)
+        # # When place_obj() is used, it places trees randomly and might leave some empty cells
+        # # This causes helper_grid.get() to return None for those cells, leading to AttributeError
+        # # during agent movement. We fill all remaining empty cells with healthy trees.
+        # for i in range(self.grid_size):
+        #     for j in range(self.grid_size):
+        #         cell = self.grid.get(i, j)
+        #         if cell is None:
+        #             # Skip walls (boundary cells)
+        #             if not (i == 0 or i == self.grid_size - 1 or
+        #                     j == 0 or j == self.grid_size - 1):
+        #                 tree_obj = Tree(self.world, STATE_TO_IDX_WILDFIRE["healthy"])
+        #                 self.grid.set(i, j, tree_obj)
+        #                 self.helper_grid.set(i, j, tree_obj)
+        #                 self.unburnt_trees.append(tree_obj)  # ← unburnt_trees에 추가!
+        # ## TODO: 다중 산불 끝##
+
         # create list of unburnt trees. initial state does not have burnt trees.
         for c in self.helper_grid.grid:
             if c is not None and c.type == "tree":
                 self.unburnt_trees.append(c)
+                # Track initial trees on fire for reward shaping
+                if self.reward_function is not None and c.state == 1:
+                    self.trees_ever_on_fire.add(id(c))
 
         # insert agents in grid
         for i, a in enumerate(self.agents):
             self.place_agent(a, pos=agent_start_pos[i])
             self.helper_grid.get(*agent_start_pos[i]).agent_above = True
+            # Phase 3: Set home position (급수원 위치)
+            a.home_pos = self.agent_supply_positions[i]
 
     def _get_obs(self):
         """Get observation vectors of all agents in the environment.
@@ -830,10 +888,19 @@ class WildfireEnv(MultiGridEnv):
             agent.movement_accumulator = 0.0
             agent.pending_action = None  # Clear pending actions on reset
 
+        # Phase 3/4: Reset agent active time and state for supply source return mechanism
+        for a in self.agents:
+            a.active_time_remaining = a.max_active_time
+            a.target_pos = None
+            a.state = AgentState.ACTIVE
+            a.recharge_time_remaining = 0
+            a.water_remaining = a.max_water  # Refill water on reset
+
         # reset reward shaping 상태 변수
         if self.reward_function is not None:
             self.cumulative_extinguished = 0
             self.cumulative_actions = 0
+            self.trees_ever_on_fire = set()
 
         # reset the grid
         # Temporarily set partial_obs to False to prevent parent's gen_obs() call
@@ -938,12 +1005,17 @@ class WildfireEnv(MultiGridEnv):
 
         # get tree in agent's old position from helper grid and add tree to grid
         tree = self.helper_grid.get(*self.agents[i].pos)
+        # if tree is not None:
+        #     tree.agent_above = False
+        #     self.grid.set(*self.agents[i].pos, tree)
         tree.agent_above = False
         self.grid.set(*self.agents[i].pos, tree)
 
         # update attributes
         next_tree = self.helper_grid.get(*next_pos)
         next_tree.agent_above = True
+        # if next_tree is not None:
+        #     next_tree.agent_above = True
         self.agents[i].pos = next_pos
 
     def neighbors_on_fire(self, tree_pos) -> int:
@@ -1033,6 +1105,41 @@ class WildfireEnv(MultiGridEnv):
         terminated = False
         truncated = False
 
+        # Phase 3/4: Update active time and manage agent states (supply source return mechanism)
+        for i, agent in enumerate(self.agents):
+            if agent.state == AgentState.ACTIVE:
+                # Decrease active time
+                if agent.active_time_remaining > 0:
+                    agent.active_time_remaining -= 1
+
+                # If time runs out, transition to RETURNING
+                if agent.active_time_remaining == 0:
+                    agent.state = AgentState.RETURNING
+                    agent.target_pos = agent.home_pos
+
+                # If water runs out, transition to RETURNING (forced)
+                if agent.water_remaining <= 0:
+                    agent.state = AgentState.RETURNING
+                    agent.target_pos = agent.home_pos
+
+            elif agent.state == AgentState.RETURNING:
+                # Check if agent reached home
+                if np.array_equal(agent.pos, agent.home_pos):
+                    agent.state = AgentState.RECHARGING
+                    agent.recharge_time_remaining = agent.recharge_time
+                    agent.target_pos = None
+
+            elif agent.state == AgentState.RECHARGING:
+                # Decrease recharge time
+                if agent.recharge_time_remaining > 0:
+                    agent.recharge_time_remaining -= 1
+
+                # If recharging complete, transition back to ACTIVE
+                if agent.recharge_time_remaining == 0:
+                    agent.state = AgentState.ACTIVE
+                    agent.active_time_remaining = agent.max_active_time
+                    agent.water_remaining = agent.max_water  # Refill water when recharging completes
+
         # Save initial positions to track which agents actually moved
         initial_positions = {i: tuple(agent.pos) for i, agent in enumerate(self.agents)}
 
@@ -1044,6 +1151,39 @@ class WildfireEnv(MultiGridEnv):
         # 1) Move agents sequentially, in random order
         order = np.random.permutation(len(actions))
         for i in order:
+            # If agent is RETURNING or RECHARGING, ignore user actions and move home or stay
+            if self.agents[i].state == AgentState.RETURNING:
+                # Force movement toward home
+                home_pos = np.array(self.agents[i].home_pos)
+                current_pos = np.array(self.agents[i].pos)
+                delta = home_pos - current_pos
+
+                # Move one step toward home (8-directional or diagonal)
+                if not np.array_equal(current_pos, home_pos):
+                    # Calculate direction toward home
+                    next_pos = None
+                    abs_delta = np.abs(delta)
+
+                    if abs_delta[0] > 0 and abs_delta[1] > 0:
+                        # Diagonal movement
+                        next_pos = current_pos + np.array([np.sign(delta[0]), np.sign(delta[1])])
+                    elif abs_delta[0] > 0:
+                        # Horizontal movement
+                        next_pos = current_pos + np.array([np.sign(delta[0]), 0])
+                    elif abs_delta[1] > 0:
+                        # Vertical movement
+                        next_pos = current_pos + np.array([0, np.sign(delta[1])])
+
+                    if next_pos is not None:
+                        next_cell = self.grid.get(*next_pos)
+                        if next_cell is None or next_cell.can_overlap():
+                            self.move_agent(i, tuple(next_pos), agent_path_trees)
+                continue
+
+            elif self.agents[i].state == AgentState.RECHARGING:
+                # Don't move during recharging
+                continue
+
             if actions[i] == self.actions.STILL:
                 continue
 
@@ -1158,6 +1298,45 @@ class WildfireEnv(MultiGridEnv):
             if tuple(agent.pos) != initial_positions[i]:
                 num_agents_moved += 1
 
+        # 1.5) Consume water and aggregate suppression effect per cell
+        # First, reset all agent_above flags
+        for c in self.helper_grid.grid:
+            if c is not None and c.type == "tree":
+                c.agent_above = False
+
+        # Track suppression activity per cell position
+        suppression_active = {}  # {(x, y): bool}
+
+        for agent in self.agents:
+            tree_at_pos = self.helper_grid.get(*agent.pos)
+            if tree_at_pos is None or tree_at_pos.type != "tree":
+                continue
+
+            pos = tuple(agent.pos)
+
+            # If on a burning tree with water, consume water and mark suppression
+            if tree_at_pos.state == 1 and agent.water_remaining > 0:
+                # Consume water
+                agent.water_remaining = max(0, agent.water_remaining - agent.water_consumption_rate)
+                # Mark this cell as having active suppression
+                suppression_active[pos] = True
+
+        # Apply aggregated suppression flags to all burning trees
+        for c in self.unburnt_trees:
+            if c.state == 1:  # burning
+                pos = tuple(c.pos)
+                c.agent_above = suppression_active.get(pos, False)
+
+        # 1.6) Calculate agent_on_fire_tree BEFORE wildfire dynamics
+        # This captures which agents are on burning trees BEFORE any state changes
+        agent_on_fire_tree = {}
+        for a in self.agents:
+            tree_at_pos = self.helper_grid.get(*a.pos)
+            if tree_at_pos and tree_at_pos.type == "tree" and tree_at_pos.state == 1:
+                agent_on_fire_tree[a.index] = 1
+            else:
+                agent_on_fire_tree[a.index] = 0
+
         # 2) Propagate wildfire dynamics by one time step
         trees_to_fire_state = []
         if self.log_selfish_region_metrics:
@@ -1172,6 +1351,9 @@ class WildfireEnv(MultiGridEnv):
                 if np.random.rand() < 1 - (1 - self.alpha) ** self.neighbors_on_fire(pos):
                     trees_to_fire_state.append(c)
                     self.trees_on_fire += 1
+                    # Track that this tree has ever caught fire
+                    if self.reward_function is not None:
+                        self.trees_ever_on_fire.add(id(c))
                     if self.log_selfish_region_metrics and c.region != "common":
                         self.selfish_region_trees_on_fire[int(c.region)] += 1
                         num_trees_to_fire_state_sr[c.region] += 1
@@ -1272,129 +1454,130 @@ class WildfireEnv(MultiGridEnv):
                 o.color = STATE_IDX_TO_COLOR_WILDFIRE[o.state]
 
         # 4) Episode termination check
+        is_episode_end = (self.trees_on_fire == 0) or (self.step_count >= self.max_steps)
+
         if self.trees_on_fire == 0:
             terminated = True
-            rewards = {f"{a.index}": 0.0 for a in self.agents}
         elif self.step_count >= self.max_steps:
             truncated = True
-            rewards = {f"{a.index}": 0.0 for a in self.agents}
-        else:
-            # 5) 보상 계산을 위한 상태 수집  ---------------------------------------------
-            # (a) 크레딧 할당: 어떤 에이전트가 불을 껐는가?
-            extinguished_by_agent = np.zeros(self.num_agents, dtype=np.int32)
 
-            # 이미 카운트된 tree들을 추적하여 중복 방지
-            counted_trees = set()
+        # 5) 보상 계산을 위한 상태 수집  ---------------------------------------------
+        # (a) 크레딧 할당: 어떤 에이전트가 불을 껐는가?
+        extinguished_by_agent = np.zeros(self.num_agents, dtype=np.int32)
 
-            for c in trees_to_healthy_state:
-                # 같은 좌표에 있는 에이전트를 찾아 1점 부여
-                for a in self.agents:
+        # 이미 카운트된 tree들을 추적하여 중복 방지
+        counted_trees = set()
+
+        for c in trees_to_healthy_state:
+            # 같은 좌표에 있는 에이전트를 찾아 1점 부여
+            for a in self.agents:
+                if (a.pos[0] == c.pos[0]) and (a.pos[1] == c.pos[1]):
+                    extinguished_by_agent[a.index] += 1
+                    counted_trees.add(id(c))  # tree object의 고유 ID로 추적
+                    # break  # 단일 에이전트 겹침 가정
+
+        ## TODO: 지나간 경로도 진화(5) ##
+        # (a-1) 경로상 진화된 trees에 대한 크레딧 할당 (도착점과 중복되지 않도록)
+        for agent_idx, path_trees in agent_path_trees.items():
+            for path_tree in path_trees:
+                if path_tree in trees_to_healthy_state and id(path_tree) not in counted_trees:
+                    extinguished_by_agent[agent_idx] += 1
+                    counted_trees.add(id(path_tree))
+        ## END: 지나간 경로도 진화(5) ##
+
+        new_fire_total = len(trees_to_fire_state)
+
+        # (b) reward shaping 함수를 위한 추가 상태 계산
+        if self.reward_function is not None:
+            # 이번 스텝에 소화된 나무 수
+            trees_extinguished_this_step = int(np.sum(extinguished_by_agent))
+            # 누적 카운터 업데이트
+            self.cumulative_extinguished += trees_extinguished_this_step
+            self.cumulative_actions += self.num_agents
+            # 한 번도 불이 안 붙은 나무 계산 (보존된 나무)
+            # trees_preserved = 총 나무 - (불이 붙은 적 있는 고유 나무) - (현재 불타는 나무)
+            # Note: trees_ever_on_fire는 불이 붙었다가 소화되거나 소실된 모든 나무를 포함
+            # trees_preserved = self.total_trees - len(self.trees_ever_on_fire) - self.trees_on_fire
+            trees_preserved = self.total_trees - len(self.trees_ever_on_fire)
+            # 에이전트별 소화 나무 수
+            extinguished_per_agent = {i: int(extinguished_by_agent[i]) for i in range(self.num_agents)}
+
+            # individual2 reward를 위한 추가 파라미터
+            # agent_tree_extinguished: 각 에이전트가 있는 나무가 진화되었는지 (0 or 1)
+            agent_tree_extinguished = {}
+            for a in self.agents:
+                extinguished_here = 0
+                for c in trees_to_healthy_state:
                     if (a.pos[0] == c.pos[0]) and (a.pos[1] == c.pos[1]):
-                        extinguished_by_agent[a.index] += 1
-                        counted_trees.add(id(c))  # tree object의 고유 ID로 추적
-                        # break  # 단일 에이전트 겹침 가정
-            
-            ## TODO: 지나간 경로도 진화(5) ##
-            # (a-1) 경로상 진화된 trees에 대한 크레딧 할당 (도착점과 중복되지 않도록)
-            for agent_idx, path_trees in agent_path_trees.items():
-                for path_tree in path_trees:
-                    if path_tree in trees_to_healthy_state and id(path_tree) not in counted_trees:
-                        extinguished_by_agent[agent_idx] += 1
-                        counted_trees.add(id(path_tree))
-            ## END: 지나간 경로도 진화(5) ##
+                        extinguished_here = 1
+                        break
 
-            new_fire_total = len(trees_to_fire_state)
-
-            # (b) reward shaping 함수를 위한 추가 상태 계산
-            if self.reward_function is not None:
-                # 이번 스텝에 소화된 나무 수
-                trees_extinguished_this_step = int(np.sum(extinguished_by_agent))
-                # 누적 카운터 업데이트
-                self.cumulative_extinguished += trees_extinguished_this_step
-                self.cumulative_actions += self.num_agents
-                # 한 번도 불이 안 붙은 나무 계산 (보존된 나무)
-                trees_preserved = (self.total_trees - self.cumulative_extinguished
-                                  - self.burnt_trees - self.trees_on_fire)
-                # 에이전트별 소화 나무 수
-                extinguished_per_agent = {i: int(extinguished_by_agent[i]) for i in range(self.num_agents)}
-
-                # individual2 reward를 위한 추가 파라미터
-                # agent_tree_extinguished: 각 에이전트가 있는 나무가 진화되었는지 (0 or 1)
-                agent_tree_extinguished = {}
-                for a in self.agents:
-                    extinguished_here = 0
-                    for c in trees_to_healthy_state:
-                        if (a.pos[0] == c.pos[0]) and (a.pos[1] == c.pos[1]):
+                ## TODO: 지나간 경로도 진화(6) ##
+                # 경로상 진화된 tree 확인
+                if extinguished_here == 0:
+                    for path_tree in agent_path_trees[a.index]:
+                        if path_tree in trees_to_healthy_state:
                             extinguished_here = 1
                             break
+                agent_tree_extinguished[a.index] = extinguished_here
+                ## END: 지나간 경로도 진화(6) ##
 
-                    ## TODO: 지나간 경로도 진화(6) ##
-                    # 경로상 진화된 tree 확인 
-                    if extinguished_here == 0:
-                        for path_tree in agent_path_trees[a.index]:
-                            if path_tree in trees_to_healthy_state:
-                                extinguished_here = 1
-                                break
-                    agent_tree_extinguished[a.index] = extinguished_here
-                    ## END: 지나간 경로도 진화(6) ##
+        # 6) 보상 계산  ---------------------------------------------
+        if self.reward_function is not None:
+            # 현재 건강한 나무의 총 개수
+            total_healthy_trees = self.total_trees - self.burnt_trees - self.trees_on_fire
 
-                # agent_on_fire_tree: 각 에이전트가 불타는 나무 위에 있는지 (0 or 1)
-                agent_on_fire_tree = {}
-                for a in self.agents:
-                    tree_at_pos = self.helper_grid.get(*a.pos)
-                    if tree_at_pos and tree_at_pos.type == "tree" and tree_at_pos.state == 1:
-                        agent_on_fire_tree[a.index] = 1
-                    else:
-                        agent_on_fire_tree[a.index] = 0
+            # reward shaping 함수 사용
+            rewards = self._compute_shaped_rewards(
+                trees_to_fire_state=trees_to_fire_state,
+                trees_to_burnt_state=trees_to_burnt_state,
+                trees_to_healthy_state=trees_to_healthy_state,
+                trees_extinguished_this_step=trees_extinguished_this_step,
+                new_fire_total=new_fire_total,
+                trees_preserved=trees_preserved,
+                extinguished_per_agent=extinguished_per_agent,
+                agent_tree_extinguished=agent_tree_extinguished,
+                agent_on_fire_tree=agent_on_fire_tree,
+                num_agents_moved=num_agents_moved,
+                is_episode_end=is_episode_end,
+                current_step=self.step_count,
+                max_steps=self.max_steps,
+                total_healthy_trees=total_healthy_trees,
+                total_trees=self.total_trees,
+            )
+        else:
+            # 기존 base rewards 사용
+            # 즉시성 신호를 강화: 끈 불(=on fire -> healthy)에는 +, 새로 번 불에는 -
+            # 하이퍼파라미터(필요시 조정)
+            r_extinguish = 1.0           # 내가 서 있던 불이 꺼지면 +1
+            r_new_fire = 0.5             # 새로 번 불 1그루당 -0.5(기본)
+            selfish_w = float(self.selfishness_weight)  # 타구역 가중
+            agent_rewards = np.zeros(self.num_agents, dtype=np.float32)
 
-            # 6) 보상 계산  ---------------------------------------------
-            if self.reward_function is not None:
-                # reward shaping 함수 사용
-                rewards = self._compute_shaped_rewards(
-                    trees_to_fire_state=trees_to_fire_state,
-                    trees_to_burnt_state=trees_to_burnt_state,
-                    trees_to_healthy_state=trees_to_healthy_state,
-                    trees_extinguished_this_step=trees_extinguished_this_step,
-                    new_fire_total=new_fire_total,
-                    trees_preserved=trees_preserved,
-                    extinguished_per_agent=extinguished_per_agent,
-                    agent_tree_extinguished=agent_tree_extinguished,
-                    agent_on_fire_tree=agent_on_fire_tree,
-                    num_agents_moved=num_agents_moved,
-                )
+            if self.cooperative_reward:
+                # 협력: 모두 같은 보상(공동체 관점)
+                coop = r_extinguish * int(np.sum(extinguished_by_agent)) - r_new_fire * new_fire_total
+                agent_rewards[:] = coop
             else:
-                # 기존 base rewards 사용
-                # 즉시성 신호를 강화: 끈 불(=on fire -> healthy)에는 +, 새로 번 불에는 -
-                # 하이퍼파라미터(필요시 조정)
-                r_extinguish = 1.0           # 내가 서 있던 불이 꺼지면 +1
-                r_new_fire = 0.5             # 새로 번 불 1그루당 -0.5(기본)
-                selfish_w = float(self.selfishness_weight)  # 타구역 가중
-                agent_rewards = np.zeros(self.num_agents, dtype=np.float32)
-
-                if self.cooperative_reward:
-                    # 협력: 모두 같은 보상(공동체 관점)
-                    coop = r_extinguish * int(np.sum(extinguished_by_agent)) - r_new_fire * new_fire_total
-                    agent_rewards[:] = coop
+                # 비협력: 내 이기구역에서 번 불은 강한 페널티, 타구역은 약화(selfish_w)
+                if self.log_selfish_region_metrics:
+                    for a in self.agents:
+                        sr = int(num_trees_to_fire_state_sr.get(f"{a.index}", 0))
+                        other = new_fire_total - sr
+                        agent_rewards[a.index] = (
+                            + r_extinguish * extinguished_by_agent[a.index]
+                            - r_new_fire * (sr + selfish_w * other)
+                        )
                 else:
-                    # 비협력: 내 이기구역에서 번 불은 강한 페널티, 타구역은 약화(selfish_w)
-                    if self.log_selfish_region_metrics:
-                        for a in self.agents:
-                            sr = int(num_trees_to_fire_state_sr.get(f"{a.index}", 0))
-                            other = new_fire_total - sr
-                            agent_rewards[a.index] = (
-                                + r_extinguish * extinguished_by_agent[a.index]
-                                - r_new_fire * (sr + selfish_w * other)
-                            )
-                    else:
-                        # 자기/타 구역 구분을 쓰지 않을 때: 전역 페널티만
-                        for a in self.agents:
-                            agent_rewards[a.index] = (
-                                + r_extinguish * extinguished_by_agent[a.index]
-                                - r_new_fire * new_fire_total
-                            )
+                    # 자기/타 구역 구분을 쓰지 않을 때: 전역 페널티만
+                    for a in self.agents:
+                        agent_rewards[a.index] = (
+                            + r_extinguish * extinguished_by_agent[a.index]
+                            - r_new_fire * new_fire_total
+                        )
 
-                rewards = {f"{a.index}": float(agent_rewards[a.index]) for a in self.agents}
-                # ----------------------------------------------------------------
+            rewards = {f"{a.index}": float(agent_rewards[a.index]) for a in self.agents}
+            # ----------------------------------------------------------------
 
         # 7) Observations
         agent_obs = self._get_obs()
@@ -1431,6 +1614,11 @@ class WildfireEnv(MultiGridEnv):
         agent_tree_extinguished,
         agent_on_fire_tree,
         num_agents_moved,
+        is_episode_end=False,
+        current_step=0,
+        max_steps=100,
+        total_healthy_trees=0,
+        total_trees=1,
     ):
         """
         reward shaping 함수를 사용하여 보상 계산
@@ -1455,6 +1643,16 @@ class WildfireEnv(MultiGridEnv):
             각 에이전트가 불타는 나무 위에 있는지 {agent_id: 0 or 1}
         num_agents_moved : int
             이번 스텝에 실제로 이동한 에이전트 수 (위치가 변경된 에이전트)
+        is_episode_end : bool
+            Whether this is the final step of episode
+        current_step : int
+            Current step number in episode
+        max_steps : int
+            Maximum steps allowed in episode
+        total_healthy_trees : int
+            Total healthy trees at end of episode
+        total_trees : int
+            Total trees in environment
 
         Returns
         -------
@@ -1478,7 +1676,14 @@ class WildfireEnv(MultiGridEnv):
                 trees_to_fire_state=trees_to_fire_state,
                 trees_to_burnt_state=trees_to_burnt_state,
                 trees_to_healthy_state=trees_to_healthy_state,
+                agent_tree_extinguished=agent_tree_extinguished,
+                agent_on_fire_tree=agent_on_fire_tree,
                 num_agents=self.num_agents,
+                is_episode_end=is_episode_end,
+                current_step=current_step,
+                max_steps=max_steps,
+                total_healthy_trees=total_healthy_trees,
+                total_trees=total_trees,
                 **self.reward_config
             )
             # 반환된 dict의 키를 문자열로 변환
@@ -1519,6 +1724,40 @@ class WildfireEnv(MultiGridEnv):
                 agent_on_fire_tree=agent_on_fire_tree,
                 num_agents=self.num_agents,
                 num_agents_moved=num_agents_moved,
+                **self.reward_config
+            )
+            # 반환된 dict의 키를 문자열로 변환
+            return {f"{k}": v for k, v in reward_dict.items()}
+
+        elif self.reward_shaping == "cooperative2":
+            # cooperative2 reward: 균형잡힌 협력 보상 (50% 협력 + 50% 개별 기여) + 시간 패널티
+            reward_dict = self.reward_function(
+                trees_to_fire_state=trees_to_fire_state,
+                trees_to_burnt_state=trees_to_burnt_state,
+                agent_tree_extinguished=agent_tree_extinguished,
+                num_agents=self.num_agents,
+                current_step=current_step,
+                max_steps=max_steps,
+                **self.reward_config
+            )
+            # 반환된 dict의 키를 문자열로 변환
+            return {f"{k}": v for k, v in reward_dict.items()}
+
+        elif self.reward_shaping == "cooperative3":
+            # cooperative3 reward: 개선된 양의 보상 신호 (건강한 나무 비율 최대화)
+            reward_dict = self.reward_function(
+                trees_preserved=trees_preserved,
+                trees_to_fire_state=trees_to_fire_state,
+                trees_to_burnt_state=trees_to_burnt_state,
+                trees_to_healthy_state=trees_to_healthy_state,
+                agent_tree_extinguished=agent_tree_extinguished,
+                agent_on_fire_tree=agent_on_fire_tree,
+                num_agents=self.num_agents,
+                is_episode_end=is_episode_end,
+                current_step=current_step,
+                max_steps=max_steps,
+                total_healthy_trees=total_healthy_trees,
+                total_trees=total_trees,
                 **self.reward_config
             )
             # 반환된 dict의 키를 문자열로 변환
