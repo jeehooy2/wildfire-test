@@ -483,19 +483,21 @@ def cooperative3_reward(
     #     2.0 * T_b
     # )
 
-    shared_reward = (
-        0 * T_p +
-        10.0 * T_e -
-        1.0 * T_n -
-        5.0 * T_b
-    )
-
+    #11/26
     # shared_reward = (
-    #     0.2 * T_h +
+    #     0 * T_p +
     #     10.0 * T_e -
     #     1.0 * T_n -
     #     5.0 * T_b
     # )
+
+    #11/27
+    shared_reward = (
+        # 0.05 * T_p +
+        10.0 * T_e -
+        1.0 * T_n -
+        5.0 * T_b
+    )
 
     # 4) 시간 페널티 (진행도 기반: 초반은 낮고 후반이 높음)
     # → 빠른 에피소드 종료를 유도하지만 처음부터는 압박하지 않음
@@ -557,7 +559,7 @@ def get_reward_function(reward_type):
     Returns
     -------
     callable
-        The reward function
+        The reward 
 
     Raises
     ------

@@ -8,20 +8,20 @@ Agent Configuration:
   - Helicopters: 2
   - Trucks: 4
   - Crews: 0
-Seeds: [42, 43, 44]
+Seeds: [50, 51, 52]
 
-Episode 1 (Seed 42):
-  Trained Reward: 1.38
-  Random Reward: -4.49
+Episode 1 (Seed 50):
+  Trained Reward: 5.11
+  Random Reward: -4.22
 
-Episode 2 (Seed 43):
-  Trained Reward: 3.46
-  Random Reward: -3.09
+Episode 2 (Seed 51):
+  Trained Reward: 0.15
+  Random Reward: -0.91
 
-Episode 3 (Seed 44):
-  Trained Reward: 3.52
-  Random Reward: -2.74
+Episode 3 (Seed 52):
+  Trained Reward: 0.22
+  Random Reward: -0.82
 
 --------------------------------------------------------------------------------
-Avg Trained Reward: 2.79 ± 1.00
-Avg Random Reward: -3.44 ± 0.76
+Avg Trained Reward: 1.83 ± 2.32
+Avg Random Reward: -1.98 ± 1.58

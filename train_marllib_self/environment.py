@@ -10,13 +10,13 @@ parameters, agent composition, fire dynamics, and reward settings.
 # BASE ENVIRONMENT CONFIGURATION
 # =============================================================================
 
-ENV_CONFIG = {
+ENV_CONFIG = { 
     # Grid and episode settings
     "size":22,                     # Grid size (25x25)
     "num_agents": 6,                # Total number of agents
     "max_steps": 300,              # Maximum steps per episode
-    "initial_fire_size": 3,         # Initial fire area (3x3)
-    "initial_fire_num": 1,          # Number of initial fire regions
+    "initial_fire_size": 2,         # Initial fire area (3x3)
+    "initial_fire_num": 2,          # Number of initial fire regions
 
     # Agent type configuration (must sum to num_agents)
     "num_helicopters": 2,           # Fast, high efficiency
@@ -37,7 +37,7 @@ ENV_CONFIG = {
     "delta_beta": 0.54,             # Fire decay/burnout parameter
 
     # Observation settings
-    "partial_obs": True,            # Full observability (recommended to start)
+    "partial_obs": False,            # Full observability (recommended to start)
     "agent_view_size": 10,         # Only used if partial_obs=True
 
     # Reward settings

@@ -1,0 +1,256 @@
+================================================================================
+Wildfire Suppression Task - Evaluation Report
+================================================================================
+
+Algorithm: ppo
+Run: run18
+Checkpoint: train_marllib_self/experiments/ppo/run18/ippo_mlp_wildfire-ma/IPPOTrainer_wildfire-ma_wildfire-ma_d77db_00000_0_2025-11-25_21-00-58/checkpoint_000200
+Evaluation Episodes: 50
+Seed: 42
+
+Environment Configuration:
+  size: 22
+  num_agents: 4
+  max_steps: 300
+  initial_fire_size: 2
+  initial_fire_num: 2
+  num_helicopters: 2
+  num_trucks: 2
+  num_crews: 0
+  agent_start_positions: ((19, 1), (20, 2), (19, 2), (20, 1))
+  agent_supply_positions: ((11, 11), (11, 11), (11, 11), (11, 11))
+  alpha: 0.05
+  beta: 0.9
+  delta_beta: 0.54
+  partial_obs: True
+  agent_view_size: 10
+  cooperative_reward: False
+  selfishness_weight: 0.2
+  reward_shaping: cooperative3
+  reward_shaping_config: None
+  render_mode: rgb_array
+
+================================================================================
+Results
+================================================================================
+
+Healthy Trees Ratio (%):
+  Mean: 54.23%
+  Std:  26.40%
+  Min:  14.82%
+  Max:  95.71%
+
+Burnt Trees Ratio (%) - Damage Area:
+  Mean: 45.77%
+  Std:  26.40%
+  Min:  4.29%
+  Max:  85.18%
+
+Episode Length (steps):
+  Mean: 120.0
+  Std:  55.8
+  Min:  15.0
+  Max:  281.0
+
+Per-Episode Details:
+--------------------------------------------------------------------------------
+Episode 1 (seed=42):
+  Healthy: 18.09%
+  Burnt:   81.91%
+  Length:  160 steps
+Episode 2 (seed=43):
+  Healthy: 36.52%
+  Burnt:   63.48%
+  Length:  109 steps
+Episode 3 (seed=44):
+  Healthy: 59.05%
+  Burnt:   40.95%
+  Length:  151 steps
+Episode 4 (seed=45):
+  Healthy: 80.30%
+  Burnt:   19.70%
+  Length:  122 steps
+Episode 5 (seed=46):
+  Healthy: 28.39%
+  Burnt:   71.61%
+  Length:  220 steps
+Episode 6 (seed=47):
+  Healthy: 82.62%
+  Burnt:   17.38%
+  Length:  67 steps
+Episode 7 (seed=48):
+  Healthy: 18.84%
+  Burnt:   81.16%
+  Length:  155 steps
+Episode 8 (seed=49):
+  Healthy: 62.97%
+  Burnt:   37.03%
+  Length:  136 steps
+Episode 9 (seed=50):
+  Healthy: 37.28%
+  Burnt:   62.72%
+  Length:  137 steps
+Episode 10 (seed=51):
+  Healthy: 27.39%
+  Burnt:   72.61%
+  Length:  135 steps
+Episode 11 (seed=52):
+  Healthy: 95.71%
+  Burnt:   4.29%
+  Length:  15 steps
+Episode 12 (seed=53):
+  Healthy: 40.70%
+  Burnt:   59.30%
+  Length:  146 steps
+Episode 13 (seed=54):
+  Healthy: 76.88%
+  Burnt:   23.12%
+  Length:  71 steps
+Episode 14 (seed=55):
+  Healthy: 28.39%
+  Burnt:   71.61%
+  Length:  110 steps
+Episode 15 (seed=56):
+  Healthy: 29.15%
+  Burnt:   70.85%
+  Length:  207 steps
+Episode 16 (seed=57):
+  Healthy: 19.35%
+  Burnt:   80.65%
+  Length:  136 steps
+Episode 17 (seed=58):
+  Healthy: 33.50%
+  Burnt:   66.50%
+  Length:  281 steps
+Episode 18 (seed=59):
+  Healthy: 33.17%
+  Burnt:   66.83%
+  Length:  191 steps
+Episode 19 (seed=60):
+  Healthy: 32.91%
+  Burnt:   67.09%
+  Length:  172 steps
+Episode 20 (seed=61):
+  Healthy: 36.36%
+  Burnt:   63.64%
+  Length:  103 steps
+Episode 21 (seed=62):
+  Healthy: 88.64%
+  Burnt:   11.36%
+  Length:  33 steps
+Episode 22 (seed=63):
+  Healthy: 87.41%
+  Burnt:   12.59%
+  Length:  40 steps
+Episode 23 (seed=64):
+  Healthy: 36.93%
+  Burnt:   63.07%
+  Length:  143 steps
+Episode 24 (seed=65):
+  Healthy: 33.92%
+  Burnt:   66.08%
+  Length:  146 steps
+Episode 25 (seed=66):
+  Healthy: 91.44%
+  Burnt:   8.56%
+  Length:  55 steps
+Episode 26 (seed=67):
+  Healthy: 93.70%
+  Burnt:   6.30%
+  Length:  41 steps
+Episode 27 (seed=68):
+  Healthy: 83.88%
+  Burnt:   16.12%
+  Length:  57 steps
+Episode 28 (seed=69):
+  Healthy: 83.08%
+  Burnt:   16.92%
+  Length:  58 steps
+Episode 29 (seed=70):
+  Healthy: 41.96%
+  Burnt:   58.04%
+  Length:  248 steps
+Episode 30 (seed=71):
+  Healthy: 64.07%
+  Burnt:   35.93%
+  Length:  100 steps
+Episode 31 (seed=72):
+  Healthy: 39.70%
+  Burnt:   60.30%
+  Length:  192 steps
+Episode 32 (seed=73):
+  Healthy: 73.87%
+  Burnt:   26.13%
+  Length:  121 steps
+Episode 33 (seed=74):
+  Healthy: 66.08%
+  Burnt:   33.92%
+  Length:  98 steps
+Episode 34 (seed=75):
+  Healthy: 74.12%
+  Burnt:   25.88%
+  Length:  118 steps
+Episode 35 (seed=76):
+  Healthy: 17.84%
+  Burnt:   82.16%
+  Length:  125 steps
+Episode 36 (seed=77):
+  Healthy: 47.10%
+  Burnt:   52.90%
+  Length:  118 steps
+Episode 37 (seed=78):
+  Healthy: 36.27%
+  Burnt:   63.73%
+  Length:  136 steps
+Episode 38 (seed=79):
+  Healthy: 27.46%
+  Burnt:   72.54%
+  Length:  101 steps
+Episode 39 (seed=80):
+  Healthy: 84.42%
+  Burnt:   15.58%
+  Length:  87 steps
+Episode 40 (seed=81):
+  Healthy: 59.70%
+  Burnt:   40.30%
+  Length:  176 steps
+Episode 41 (seed=82):
+  Healthy: 89.95%
+  Burnt:   10.05%
+  Length:  51 steps
+Episode 42 (seed=83):
+  Healthy: 14.82%
+  Burnt:   85.18%
+  Length:  132 steps
+Episode 43 (seed=84):
+  Healthy: 33.25%
+  Burnt:   66.75%
+  Length:  156 steps
+Episode 44 (seed=85):
+  Healthy: 75.82%
+  Burnt:   24.18%
+  Length:  108 steps
+Episode 45 (seed=86):
+  Healthy: 24.87%
+  Burnt:   75.13%
+  Length:  137 steps
+Episode 46 (seed=87):
+  Healthy: 48.49%
+  Burnt:   51.51%
+  Length:  129 steps
+Episode 47 (seed=88):
+  Healthy: 33.75%
+  Burnt:   66.25%
+  Length:  122 steps
+Episode 48 (seed=89):
+  Healthy: 94.71%
+  Burnt:   5.29%
+  Length:  44 steps
+Episode 49 (seed=90):
+  Healthy: 94.47%
+  Burnt:   5.53%
+  Length:  60 steps
+Episode 50 (seed=91):
+  Healthy: 92.19%
+  Burnt:   7.81%
+  Length:  46 steps

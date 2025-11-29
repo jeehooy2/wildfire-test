@@ -143,8 +143,11 @@ if __name__ == '__main__':
     print(f"PPO 알고리즘 초기화 중...")
     ppo = marl.algos.ippo(
         hyperparam_source="common",
-        batch_episode=10,
-        lr=0.0005,        # 학습률 조정
+        # batch_episode=10,
+        batch_episode=20,
+        # lr=0.0005,        # 11/26 설정
+        # clip_param=0.3
+        lr=0.0003,           # 11/27 신규 설정
         clip_param=0.3
     )
 
@@ -185,7 +188,7 @@ if __name__ == '__main__':
         },
         local_mode=False, # GPU
         num_gpus=1,
-        num_workers=4,
+        num_workers=8,
         share_policy='group', # PPO는 모든 에이전트가 같은 정책 사용
         checkpoint_freq=50, 
         # verbose=2,
