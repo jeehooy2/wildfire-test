@@ -11,11 +11,6 @@ MARLlib PPO로 학습된 이질적 에이전트(헬리콥터, 트럭, 승무원)
 - Centralized Critic 미사용 (PPO는 decentralized 구조)
 - Weight 로드 실패 시 상세 보고
 
-시각화 기능:
-- 물/억제제 게이지: 에이전트 아래쪽에 남은 물의 양을 시각화
-- 급수원 마커: 파란색 상자로 급수원(홈) 위치 표시
-- 상태 패널: 에이전트의 상태, 물 양, 재충전 시간(충전 중일 때만)
-
 실행 예시:
 # Global state를 사용하는 경우 (full observation)
 python train_marllib_self/new_compare_visual_ppo.py \
@@ -546,9 +541,16 @@ def run_episode_and_render(env, policy_networks, policy_mapping_fn, seed,
     # 초기 프레임
     frame = env.render(mode='rgb_array')
 
+    # 각 에이전트의 활동 시간 게이지 추가
+    for agent in env.agents:
+        frame = render_activity_gauge(frame, agent)
+
     # 각 에이전트의 물 게이지 추가
     for agent in env.agents:
         frame = render_water_gauge(frame, agent)
+
+    # 각 에이전트의 급수원 마커 추가
+    for agent in env.agents:
         frame = render_supply_source_marker(frame, agent)
 
     # 에이전트 상태 패널 추가
@@ -602,9 +604,16 @@ def run_episode_and_render(env, policy_networks, policy_mapping_fn, seed,
         # 프레임 저장
         frame = env.render(mode='rgb_array')
 
+        # 각 에이전트의 활동 시간 게이지 추가
+        for agent in env.agents:
+            frame = render_activity_gauge(frame, agent)
+
         # 각 에이전트의 물 게이지 추가
         for agent in env.agents:
             frame = render_water_gauge(frame, agent)
+
+        # 각 에이전트의 급수원 마커 추가
+        for agent in env.agents:
             frame = render_supply_source_marker(frame, agent)
 
         # 에이전트 상태 패널 추가
@@ -761,10 +770,10 @@ def render_water_gauge(frame, agent, tile_size=TILE_PIXELS):
     # 게이지 배경 (진회색)
     frame[gauge_y:gauge_y+gauge_height, gauge_x:gauge_x+gauge_width] = [50, 50, 50]
 
-    # 게이지 채우기 (시안색)
+    # 게이지 채우기 (파란색)
     fill_width = int(gauge_width * fill_ratio)
     if fill_width > 0:
-        frame[gauge_y:gauge_y+gauge_height, gauge_x:gauge_x+fill_width] = [0, 255, 255]
+        frame[gauge_y:gauge_y+gauge_height, gauge_x:gauge_x+fill_width] = [0, 100, 255]
 
     return frame
 
@@ -869,10 +878,11 @@ def render_agent_status_panel(frame, agents, step):
         draw.text((panel_x + 10, y_offset), f"State: {state}", fill=state_color, font=font)
         y_offset += 12
 
-        # 물 게이지 (있을 경우)
-        if hasattr(agent, 'max_water'):
-            draw.text((panel_x + 10, y_offset), f"Water: {agent.water_remaining:.1f}/{agent.max_water}",
-                     fill=(100, 200, 255), font=font)
+        # 활동 시간 (있을 경우)
+        if hasattr(agent, 'max_active_time'):
+            time_percent = int(100 * agent.active_time_remaining / agent.max_active_time)
+            draw.text((panel_x + 10, y_offset), f"Active: {agent.active_time_remaining}/{agent.max_active_time}",
+                     fill=(200, 200, 200), font=font)
             y_offset += 12
 
         # 재충전 시간 (RECHARGING 상태일 때만)
@@ -880,6 +890,12 @@ def render_agent_status_panel(frame, agents, step):
             recharge_percent = int(100 * (agent.recharge_time - agent.recharge_time_remaining) / agent.recharge_time)
             draw.text((panel_x + 10, y_offset), f"Recharge: {agent.recharge_time_remaining}/{agent.recharge_time}",
                      fill=(255, 165, 0), font=font)
+            y_offset += 12
+
+        # 급수원 위치
+        if hasattr(agent, 'home_pos'):
+            draw.text((panel_x + 10, y_offset), f"Home: {agent.home_pos}",
+                     fill=(0, 255, 0), font=font)
             y_offset += 12
 
         y_offset += 5  # 에이전트 사이의 간격

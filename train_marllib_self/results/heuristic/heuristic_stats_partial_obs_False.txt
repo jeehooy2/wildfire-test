@@ -13,49 +13,49 @@
 에피소드별 결과:
 --------------------------------------------------------------------------------
 Episode 1 (Seed 42):
-  Reward: 3.28
-  Length: 57
+  Reward: 1.71
+  Length: 46
 
 Episode 2 (Seed 43):
-  Reward: 7.09
-  Length: 93
+  Reward: 2.87
+  Length: 81
 
 Episode 3 (Seed 44):
-  Reward: 0.87
+  Reward: 0.69
   Length: 10
 
 Episode 4 (Seed 45):
-  Reward: 2.83
-  Length: 50
+  Reward: 2.04
+  Length: 87
 
 Episode 5 (Seed 46):
-  Reward: 3.35
-  Length: 49
+  Reward: 0.54
+  Length: 36
 
 Episode 6 (Seed 47):
   Reward: 0.29
   Length: 19
 
 Episode 7 (Seed 48):
-  Reward: 10.35
-  Length: 119
+  Reward: 5.12
+  Length: 138
 
 Episode 8 (Seed 49):
-  Reward: 1.81
-  Length: 37
+  Reward: 1.27
+  Length: 54
 
 Episode 9 (Seed 50):
-  Reward: 8.08
-  Length: 102
+  Reward: 2.24
+  Length: 59
 
 Episode 10 (Seed 51):
-  Reward: 3.98
-  Length: 47
+  Reward: 1.66
+  Length: 33
 
 --------------------------------------------------------------------------------
 통계:
 --------------------------------------------------------------------------------
-평균 리워드: 4.19 ± 3.11
-평균 에피소드 길이: 58.30
-최고 리워드: 10.35
+평균 리워드: 1.84 ± 1.33
+평균 에피소드 길이: 56.30
+최고 리워드: 5.12
 최저 리워드: 0.29

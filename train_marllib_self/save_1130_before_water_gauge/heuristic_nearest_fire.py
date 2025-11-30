@@ -15,11 +15,6 @@ Phase 3/4 업데이트: wildfire.py의 급수원 반환 로직을 반영한 휴�
 
 partial_obs는 environment.py의 ENV_CONFIG['partial_obs']에서 읽어옵니다.
 
-시각화 기능:
-- 물/억제제 게이지: 에이전트 아래쪽에 남은 물의 양을 시각화
-- 급수원 마커: 파란색 상자로 급수원(홈) 위치 표시
-- 상태 패널: 에이전트의 상태, 물 양, 재충전 시간(충전 중일 때만)
-
 실행 예시:
 # 기본 실행 (통계만 저장)
 python train_marllib_self/heuristic_nearest_fire.py \
@@ -283,6 +278,7 @@ def run_heuristic_episode(env, env_config, seed, max_steps=300, render=False):
         frame = env.render(mode='rgb_array')
         # Phase 3/4: 시각화 정보 추가
         for agent in env.agents:
+            frame = render_activity_gauge(frame, agent)
             frame = render_water_gauge(frame, agent)
             frame = render_supply_source_marker(frame, agent)
         frame = render_agent_status_panel(frame, env.agents, step)
@@ -325,6 +321,7 @@ def run_heuristic_episode(env, env_config, seed, max_steps=300, render=False):
             frame = env.render(mode='rgb_array')
             # Phase 3/4: 시각화 정보 추가
             for agent in env.agents:
+                frame = render_activity_gauge(frame, agent)
                 frame = render_water_gauge(frame, agent)
                 frame = render_supply_source_marker(frame, agent)
             frame = render_agent_status_panel(frame, env.agents, step)
@@ -531,6 +528,12 @@ def render_agent_status_panel(frame, agents, step):
         draw.text((panel_x + 10, y_offset), f"State: {state}", fill=state_color, font=font)
         y_offset += 12
 
+        # 활동 시간 (있을 경우)
+        if hasattr(agent, 'max_active_time'):
+            draw.text((panel_x + 10, y_offset), f"Active: {agent.active_time_remaining}/{agent.max_active_time}",
+                     fill=(200, 200, 200), font=font)
+            y_offset += 12
+
         # 물 게이지
         if hasattr(agent, 'max_water'):
             draw.text((panel_x + 10, y_offset), f"Water: {agent.water_remaining:.1f}/{agent.max_water}",
@@ -541,6 +544,12 @@ def render_agent_status_panel(frame, agents, step):
         if agent.state == AgentState.RECHARGING and hasattr(agent, 'recharge_time'):
             draw.text((panel_x + 10, y_offset), f"Recharge: {agent.recharge_time_remaining}/{agent.recharge_time}",
                      fill=(255, 165, 0), font=font)
+            y_offset += 12
+
+        # 급수원 위치
+        if hasattr(agent, 'home_pos'):
+            draw.text((panel_x + 10, y_offset), f"Home: {agent.home_pos}",
+                     fill=(0, 255, 0), font=font)
             y_offset += 12
 
         y_offset += 5  # 에이전트 사이의 간격

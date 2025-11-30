@@ -5,9 +5,9 @@ Wildfire Environment 랜덤 액션 시각화
 이 스크립트는 학습된 정책 없이 순수 랜덤 액션으로 환경을 구동합니다.
 
 추가된 시각화 기능:
-  1. 활동 시간 게이지 (시안색): 에이전트 위쪽 - 활동 가능 시간 비율
-  2. 급수원 마커 (초록색 십자): 에이전트의 홈 위치(급수원) 표시
-  3. 에이전트 상태 패널 (우측): 각 에이전트의 상태, 활동시간, 재충전 시간, 급수원 위치
+  1. 물/억제제 게이지 (시안색): 에이전트 아래쪽 - 남은 물의 양 비율
+  2. 급수원 마커 (파란색 상자): 에이전트의 홈 위치(급수원) 표시
+  3. 에이전트 상태 패널 (우측): 각 에이전트의 상태, 물 양, 재충전 시간
 
 상태별 색상 코드:
   - ACTIVE (활동 중): 녹색
@@ -67,15 +67,12 @@ def run_episode_with_random_actions(env, seed, max_steps=300):
     frame = env.render(mode='rgb_array')
 
     # 프레임에 시각화 정보 추가
-    # 1. 각 에이전트의 활동 시간 게이지 추가
+    # 1. 각 에이전트의 물 게이지 추가
     for agent in env.agents:
-        frame = render_activity_gauge(frame, agent)
-
-    # 2. 각 에이전트의 급수원 마커 추가
-    for agent in env.agents:
+        frame = render_water_gauge(frame, agent)
         frame = render_supply_source_marker(frame, agent)
 
-    # 3. 에이전트 상태 패널 추가
+    # 2. 에이전트 상태 패널 추가
     frame = render_agent_status_panel(frame, env.agents, step)
 
     frames.append(frame)
@@ -99,15 +96,12 @@ def run_episode_with_random_actions(env, seed, max_steps=300):
         frame = env.render(mode='rgb_array')
 
         # 프레임에 시각화 정보 추가
-        # 1. 각 에이전트의 활동 시간 게이지 추가
+        # 1. 각 에이전트의 물 게이지 추가
         for agent in env.agents:
-            frame = render_activity_gauge(frame, agent)
-
-        # 2. 각 에이전트의 급수원 마커 추가
-        for agent in env.agents:
+            frame = render_water_gauge(frame, agent)
             frame = render_supply_source_marker(frame, agent)
 
-        # 3. 에이전트 상태 패널 추가
+        # 2. 에이전트 상태 패널 추가
         frame = render_agent_status_panel(frame, env.agents, step)
 
         frames.append(frame)
@@ -301,11 +295,10 @@ def render_agent_status_panel(frame, agents, step):
         draw.text((panel_x + 10, y_offset), f"State: {state}", fill=state_color, font=font)
         y_offset += 12
 
-        # 활동 시간 (있을 경우)
-        if hasattr(agent, 'max_active_time'):
-            time_percent = int(100 * agent.active_time_remaining / agent.max_active_time)
-            draw.text((panel_x + 10, y_offset), f"Active: {agent.active_time_remaining}/{agent.max_active_time}",
-                     fill=(200, 200, 200), font=font)
+        # 물 게이지 (있을 경우)
+        if hasattr(agent, 'max_water'):
+            draw.text((panel_x + 10, y_offset), f"Water: {agent.water_remaining:.1f}/{agent.max_water}",
+                     fill=(100, 200, 255), font=font)
             y_offset += 12
 
         # 재충전 시간 (RECHARGING 상태일 때만)
@@ -313,12 +306,6 @@ def render_agent_status_panel(frame, agents, step):
             recharge_percent = int(100 * (agent.recharge_time - agent.recharge_time_remaining) / agent.recharge_time)
             draw.text((panel_x + 10, y_offset), f"Recharge: {agent.recharge_time_remaining}/{agent.recharge_time}",
                      fill=(255, 165, 0), font=font)
-            y_offset += 12
-
-        # 급수원 위치
-        if hasattr(agent, 'home_pos'):
-            draw.text((panel_x + 10, y_offset), f"Home: {agent.home_pos}",
-                     fill=(0, 255, 0), font=font)
             y_offset += 12
 
         y_offset += 5  # 에이전트 사이의 간격

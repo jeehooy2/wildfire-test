@@ -140,7 +140,7 @@ class Agent(WorldObj):
         # 물/소화제 시스템
         self.max_water = 100.0                          # 최대 수량
         self.water_remaining = self.max_water            # 현재 수량
-        self.water_consumption_rate = 2.0               # 스텝당 소비량
+        self.water_consumption_rate = 8.0               # 스텝당 소비량
 
         # 목표 위치 (그리드 기반 액션용)
         self.target_pos = None
@@ -640,8 +640,11 @@ class Helicopter(Agent):
         self.efficiency = 1.3
 
         # 급수원 반환 시간 커스터마이징 (Helicopter는 빨라서 더 오래 활동 가능)
-        self.max_active_time = 80              # 200 스텝 활동 가능
+        # self.max_active_time = 80              # 200 스텝 활동 가능
+        self.max_active_time = 300              # 200 스텝 활동 가능
         self.recharge_time = 1                 # 15 스텝만 충전
+        self.max_water = 80
+
 
     def render(self, img):
         """Render the Helicopter agent with a circular shape
@@ -710,8 +713,10 @@ class Truck(Agent):
         # self.efficiency = 1.0
 
         # 급수원 반환 시간 커스터마이징 (Truck은 기본값)
-        self.max_active_time = 30              # 150 스텝 활동 가능 (기본값)
+        # self.max_active_time = 30              # 150 스텝 활동 가능 (기본값)
+        self.max_active_time = 300              # 150 스텝 활동 가능 (기본값)
         self.recharge_time = 1                 # 20 스텝 충전 (기본값)
+        self.max_water = 30
 
     def render(self, img):
         """Render the truck agent with a rectangular shape
