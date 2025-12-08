@@ -144,7 +144,7 @@ if __name__ == '__main__':
     ppo = marl.algos.ippo(
         hyperparam_source="common",
         # batch_episode=10,
-        batch_episode=20,
+        batch_episode=16,
         # lr=0.0005,        # 11/26 설정
         # clip_param=0.3
         lr=0.0003,           # 11/27 신규 설정

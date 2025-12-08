@@ -10,7 +10,7 @@ parameters, agent composition, fire dynamics, and reward settings.
 # BASE ENVIRONMENT CONFIGURATION
 # =============================================================================
 
-ENV_CONFIG = { 
+ENV_CONFIG = {
     # Grid and episode settings
     "size":22,                     # Grid size (25x25)
     "num_agents": 4,                # Total number of agents
@@ -37,7 +37,7 @@ ENV_CONFIG = {
     "delta_beta": 0.54,             # Fire decay/burnout parameter
 
     # Observation settings
-    "partial_obs": False,            # Full observability (recommended to start)
+    "partial_obs": True,            # Full observability (recommended to start)
     "agent_view_size": 10,         # Only used if partial_obs=True
 
     # Reward settings

@@ -1,0 +1,28 @@
+PPO vs Nearest Fire Heuristic Agent Visualization Stats
+================================================================================
+
+Checkpoint: train_marllib_self/experiments/ppo/run26/ippo_mlp_wildfire-ma/IPPOTrainer_wildfire-ma_wildfire-ma_a7fbb_00000_0_2025-11-28_03-09-30/checkpoint_000200
+Algorithm: PPO (decentralized)
+Comparison: PPO vs Nearest Fire Heuristic
+Partial Observation: False
+Agent Configuration:
+  - Helicopters: 2
+  - Trucks: 4
+  - Crews: 0
+Seeds: [42, 43, 44]
+
+Episode 1 (Seed 42):
+  PPO Reward: 2.38
+  Heuristic Reward: 9.12
+
+Episode 2 (Seed 43):
+  PPO Reward: 3.69
+  Heuristic Reward: 4.47
+
+Episode 3 (Seed 44):
+  PPO Reward: 1.22
+  Heuristic Reward: 2.49
+
+--------------------------------------------------------------------------------
+Avg PPO Reward: 2.43 ± 1.01
+Avg Heuristic Reward: 5.36 ± 2.78

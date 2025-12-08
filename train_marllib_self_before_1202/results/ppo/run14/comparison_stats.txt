@@ -1,0 +1,27 @@
+Trained vs Random Agent Visualization Stats (PPO - Decentralized)
+================================================================================
+
+Checkpoint: train_marllib_self/experiments/ppo/run14/ippo_mlp_wildfire-ma/IPPOTrainer_wildfire-ma_wildfire-ma_44819_00000_0_2025-11-25_06-37-52/checkpoint_000150
+Algorithm: PPO (no centralized critic)
+Partial Observation: True
+Agent Configuration:
+  - Helicopters: 2
+  - Trucks: 4
+  - Crews: 0
+Seeds: [50, 51, 52]
+
+Episode 1 (Seed 50):
+  Trained Reward: 5.11
+  Random Reward: -4.22
+
+Episode 2 (Seed 51):
+  Trained Reward: 0.15
+  Random Reward: -0.91
+
+Episode 3 (Seed 52):
+  Trained Reward: 0.22
+  Random Reward: -0.82
+
+--------------------------------------------------------------------------------
+Avg Trained Reward: 1.83 ± 2.32
+Avg Random Reward: -1.98 ± 1.58

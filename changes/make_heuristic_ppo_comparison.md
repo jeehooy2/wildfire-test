@@ -1,0 +1,1 @@
+Using train_marllib_self/new_compare_visual_ppo.py, make me a code in train_marllib_self/new_compare_ppo_nearest_fire.py that creates a .gif file comparing the ppo model with the nearest fire heuristic(from heuristic_nearest_fire.py) instead of the current random heuristic. 
